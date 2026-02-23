@@ -5818,6 +5818,7 @@ dependencies = [
  "futures",
  "openclaw-core",
  "openclaw-security",
+ "regex",
  "serde",
  "serde_json",
  "sha2",

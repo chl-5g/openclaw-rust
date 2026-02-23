@@ -29,3 +29,6 @@ base64 = "0.22"
 
 # WASM runtime
 wasmtime.workspace = true
+
+# Regex for pattern matching
+regex = "1.11"

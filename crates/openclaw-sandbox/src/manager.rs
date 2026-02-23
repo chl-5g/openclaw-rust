@@ -6,6 +6,12 @@ use tracing::{debug, info, warn};
 
 use openclaw_security::{GrantResult, NetworkDecision, SecurityMiddleware};
 
+use crate::executor::{ExecutionContext, SecureToolExecutor};
+use crate::capability::MemoryCapabilityService;
+use crate::credential::MemoryCredentialService;
+use crate::rate_limit::MemoryRateLimiter;
+use crate::leak_detector::RegexLeakDetector;
+use crate::endpoint::MemoryEndpointAllowlist;
 use crate::types::ExecutionResult;
 use crate::wasm::{WasmExecutionInput, WasmToolModule, WasmToolRuntime};
 
@@ -79,6 +85,13 @@ pub struct SandboxManager {
     wasm_runtime: Arc<RwLock<Option<WasmToolRuntime>>>,
     wasm_modules: Arc<RwLock<HashMap<String, WasmToolModule>>>,
     native_tools: Arc<RwLock<HashMap<String, Box<dyn NativeTool>>>>,
+    secure_executor: SecureToolExecutor<
+        MemoryCapabilityService,
+        MemoryCredentialService,
+        MemoryRateLimiter,
+        RegexLeakDetector,
+        MemoryEndpointAllowlist,
+    >,
 }
 
 #[async_trait::async_trait]
@@ -95,12 +108,27 @@ impl Default for SandboxManager {
 
 impl SandboxManager {
     pub fn new() -> Self {
+        let capability = Arc::new(MemoryCapabilityService::new());
+        let credential = Arc::new(MemoryCredentialService::new());
+        let rate_limiter = Arc::new(MemoryRateLimiter::new());
+        let leak_detector = Arc::new(crate::leak_detector::create_default_detector());
+        let endpoint = Arc::new(MemoryEndpointAllowlist::new());
+        
+        let secure_executor = SecureToolExecutor::new(
+            capability,
+            credential,
+            rate_limiter,
+            leak_detector,
+            endpoint,
+        );
+        
         Self {
             security: SecurityMiddleware::new(),
             tool_configs: Arc::new(RwLock::new(HashMap::new())),
             wasm_runtime: Arc::new(RwLock::new(None)),
             wasm_modules: Arc::new(RwLock::new(HashMap::new())),
             native_tools: Arc::new(RwLock::new(HashMap::new())),
+            secure_executor,
         }
     }
 
@@ -389,5 +417,335 @@ impl SandboxManager {
     pub async fn get_sandbox_type(&self, tool_id: &str) -> Option<SandboxType> {
         let configs = self.tool_configs.read().await;
         configs.get(tool_id).map(|c| c.sandbox_type.clone())
+    }
+    
+    pub async fn execute_with_security<F, R>(
+        &self,
+        tool_id: &str,
+        input: serde_json::Value,
+        user_id: Option<&str>,
+        executor_fn: F,
+    ) -> Result<ExecutionResult, SandboxError>
+    where
+        F: FnMut(serde_json::Value, std::collections::HashMap<String, String>) -> R + Send + 'static,
+        R: std::future::Future<Output = Result<serde_json::Value, String>> + Send + 'static,
+    {
+        let _config = self
+            .get_tool_config(tool_id)
+            .await
+            .ok_or_else(|| SandboxError::ToolNotFound(tool_id.to_string()))?;
+        
+        let mut ctx = ExecutionContext::new(tool_id).with_input(input);
+        
+        if let Some(uid) = user_id {
+            ctx = ctx.with_user_id(uid);
+        }
+        
+        let result = self.secure_executor
+            .execute(ctx, executor_fn)
+            .await;
+            
+        match result {
+            Ok(exec_result) => {
+                Ok(ExecutionResult {
+                    exit_code: if exec_result.success { 0 } else { 1 },
+                    stdout: exec_result.output.to_string(),
+                    stderr: exec_result.error.unwrap_or_default(),
+                    timed_out: false,
+                    duration_secs: exec_result.execution_time_ms as f64 / 1000.0,
+                    resource_usage: None,
+                })
+            }
+            Err(e) => Err(SandboxError::SecurityCheckFailed(e.to_string()))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_execute_with_security_success() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "test_tool".to_string(),
+                sandbox_type: SandboxType::Native,
+                timeout_secs: 30,
+                memory_limit_mb: 256,
+                allow_network: false,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "test_tool",
+                serde_json::json!({"input": "test"}),
+                Some("user1"),
+                |input, _env| async move {
+                    Ok(serde_json::json!({
+                        "output": format!("processed: {}", input)
+                    }))
+                },
+            )
+            .await;
+        
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.exit_code, 0);
+        assert!(result.stdout.contains("processed"));
+    }
+    
+    #[tokio::test]
+    async fn test_execute_with_security_tool_not_found() {
+        let manager = SandboxManager::new();
+        
+        let result = manager
+            .execute_with_security(
+                "nonexistent_tool",
+                serde_json::json!({"input": "test"}),
+                Some("user1"),
+                |input, _env| async move {
+                    Ok(serde_json::json!({"output": input}))
+                },
+            )
+            .await;
+        
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SandboxError::ToolNotFound(_) => {}
+            e => panic!("Expected ToolNotFound error, got: {:?}", e),
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_execute_with_security_leak_detection() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "test_tool".to_string(),
+                sandbox_type: SandboxType::Native,
+                timeout_secs: 30,
+                memory_limit_mb: 256,
+                allow_network: false,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "test_tool",
+                serde_json::json!({
+                    "api_key": "sk-1234567890abcdef",
+                    "action": "test"
+                }),
+                Some("user1"),
+                |input, _env| async move {
+                    Ok(serde_json::json!({"output": input}))
+                },
+            )
+            .await;
+        
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SandboxError::SecurityCheckFailed(e) => {
+                assert!(e.contains("leak") || e.contains("Leak"), 
+                    "Expected leak detection error, got: {}", e);
+            }
+            e => panic!("Expected SecurityCheckFailed error, got: {:?}", e),
+        }
+    }
+    
+    #[tokio::test]
+    async fn test_execute_with_security_output_leak_detection() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "test_tool".to_string(),
+                sandbox_type: SandboxType::Native,
+                timeout_secs: 30,
+                memory_limit_mb: 256,
+                allow_network: false,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "test_tool",
+                serde_json::json!({"input": "test"}),
+                Some("user1"),
+                |_input, _env| async move {
+                    Ok(serde_json::json!({
+                        "result": "success",
+                        "password": "secret123"
+                    }))
+                },
+            )
+            .await;
+        
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            SandboxError::SecurityCheckFailed(e) => {
+                assert!(e.contains("leak") || e.contains("Leak"), 
+                    "Expected leak detection error, got: {}", e);
+            }
+            e => panic!("Expected SecurityCheckFailed error, got: {:?}", e),
+        }
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test_full_security_flow_wasm() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "wasm_tool".to_string(),
+                sandbox_type: SandboxType::Wasm,
+                timeout_secs: 30,
+                memory_limit_mb: 64,
+                allow_network: true,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "wasm_tool",
+                serde_json::json!({
+                    "function": "process",
+                    "data": "hello world"
+                }),
+                Some("user123"),
+                |input, env| async move {
+                    println!("Executing with env: {:?}", env);
+                    Ok(serde_json::json!({
+                        "status": "success",
+                        "processed": input
+                    }))
+                },
+            )
+            .await;
+        
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.exit_code, 0);
+    }
+    
+    #[tokio::test]
+    async fn test_full_security_flow_docker() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "docker_tool".to_string(),
+                sandbox_type: SandboxType::Docker,
+                timeout_secs: 60,
+                memory_limit_mb: 512,
+                allow_network: true,
+                allowed_paths: vec!["./workspace/*".to_string()],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "docker_tool",
+                serde_json::json!({
+                    "command": "run",
+                    "image": "alpine"
+                }),
+                Some("user456"),
+                |input, env| async move {
+                    println!("Docker execution with env: {:?}", env);
+                    Ok(serde_json::json!({
+                        "container_id": "abc123",
+                        "result": input
+                    }))
+                },
+            )
+            .await;
+        
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.exit_code, 0);
+    }
+    
+    #[tokio::test]
+    async fn test_full_security_flow_native() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "native_tool".to_string(),
+                sandbox_type: SandboxType::Native,
+                timeout_secs: 30,
+                memory_limit_mb: 256,
+                allow_network: false,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let result = manager
+            .execute_with_security(
+                "native_tool",
+                serde_json::json!({
+                    "action": "compute",
+                    "value": 42
+                }),
+                Some("user789"),
+                |input, env| async move {
+                    println!("Native execution with env: {:?}", env);
+                    Ok(serde_json::json!({
+                        "result": 42 * 2,
+                        "input": input
+                    }))
+                },
+            )
+            .await;
+        
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert_eq!(result.exit_code, 0);
+    }
+    
+    #[tokio::test]
+    async fn test_security_middleware_integration() {
+        let manager = SandboxManager::new();
+        
+        manager
+            .register_tool_config(ToolSandboxConfig {
+                tool_id: "secure_tool".to_string(),
+                sandbox_type: SandboxType::Native,
+                timeout_secs: 30,
+                memory_limit_mb: 256,
+                allow_network: false,
+                allowed_paths: vec![],
+            })
+            .await;
+        
+        let _ = manager.get_security_middleware();
+        
+        let result = manager
+            .execute_with_security(
+                "secure_tool",
+                serde_json::json!({"test": "data"}),
+                Some("test_user"),
+                |input, _env| async move {
+                    Ok(serde_json::json!({"output": input}))
+                },
+            )
+            .await;
+        
+        assert!(result.is_ok());
     }
 }
