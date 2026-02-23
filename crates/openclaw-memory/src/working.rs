@@ -1,21 +1,22 @@
 //! 工作记忆实现
 
 use std::collections::VecDeque;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use crate::types::{MemoryItem, WorkingMemoryConfig};
 use openclaw_core::Message;
 
 /// 工作记忆 - 存储最近的消息
+#[derive(Clone)]
 pub struct WorkingMemory {
-    items: RwLock<VecDeque<MemoryItem>>,
+    items: Arc<RwLock<VecDeque<MemoryItem>>>,
     config: WorkingMemoryConfig,
 }
 
 impl WorkingMemory {
     pub fn new(config: WorkingMemoryConfig) -> Self {
         Self {
-            items: RwLock::new(VecDeque::with_capacity(config.max_messages)),
+            items: Arc::new(RwLock::new(VecDeque::with_capacity(config.max_messages))),
             config,
         }
     }

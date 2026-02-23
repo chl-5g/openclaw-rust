@@ -5,8 +5,8 @@ use chrono::Utc;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use openclaw_ai::{AIProvider, ChatRequest};
 use openclaw_core::{Content, Message, Result};
+use openclaw_ai::{AIProvider, ChatRequest};
 use openclaw_memory::MemoryManager;
 use openclaw_security::{PipelineResult, SecurityPipeline};
 use openclaw_tools::ToolResult as OpenClawToolResult;
@@ -68,36 +68,6 @@ pub trait Agent: Send + Sync {
     /// 获取当前负载 (0.0 - 1.0)
     fn load(&self) -> f32;
 
-    /// 设置 AI 提供商（异步）
-    async fn set_ai_provider(&self, provider: Arc<dyn AIProvider>);
-
-    /// 设置记忆管理器（异步）
-    async fn set_memory(&self, memory: Option<Arc<MemoryManager>>);
-
-    /// 设置安全管线（异步）
-    async fn set_security_pipeline(&self, pipeline: Arc<SecurityPipeline>);
-
-    /// 设置工具执行器（异步）
-    async fn set_tool_executor(&self, executor: Arc<openclaw_tools::SkillRegistry>);
-
-    /// 设置工具注册中心（异步）- 统一工具接口
-    async fn set_tool_registry(&self, registry: Arc<openclaw_tools::ToolRegistry>);
-
-    /// 设置设备工具注册中心（异步）
-    async fn set_device_tool_registry(&self, registry: Arc<crate::DeviceToolRegistry>);
-
-    /// 获取设备工具注册中心（异步）
-    async fn get_device_tool_registry(&self) -> Option<Arc<crate::DeviceToolRegistry>>;
-
-    /// 注入依赖（异步）- 统一接口，支持可选的工具注册中心
-    async fn inject_dependencies(
-        &self,
-        provider: Arc<dyn AIProvider>,
-        memory: Option<Arc<MemoryManager>>,
-        pipeline: Arc<SecurityPipeline>,
-        tool_registry: Option<Arc<openclaw_tools::ToolRegistry>>,
-    );
-
     /// 注入 Port（异步）- 解耦后的新接口
     async fn inject_ports(
         &self,
@@ -120,15 +90,6 @@ pub trait Agent: Send + Sync {
         name: &str,
         arguments: &serde_json::Value,
     ) -> std::result::Result<OpenClawToolResult, String>;
-
-    /// 获取 AI 提供商（异步）
-    async fn get_ai_provider(&self) -> Option<Arc<dyn AIProvider>>;
-
-    /// 获取记忆管理器（异步）
-    async fn get_memory(&self) -> Option<Arc<MemoryManager>>;
-
-    /// 获取安全管线（异步）
-    async fn get_security_pipeline(&self) -> Option<Arc<SecurityPipeline>>;
 
     /// 获取系统提示词
     fn system_prompt(&self) -> Option<&str>;
@@ -505,49 +466,6 @@ impl Agent for BaseAgent {
         self.current_tasks as f32 / self.config.max_concurrent_tasks as f32
     }
 
-    async fn set_ai_provider(&self, provider: Arc<dyn AIProvider>) {
-        *self.ai_provider.write().await = Some(provider);
-    }
-
-    async fn set_memory(&self, memory: Option<Arc<MemoryManager>>) {
-        *self.memory.lock().await = memory;
-    }
-
-    async fn set_security_pipeline(&self, pipeline: Arc<SecurityPipeline>) {
-        *self.security_pipeline.write().await = Some(pipeline);
-    }
-
-    async fn set_tool_executor(&self, executor: Arc<openclaw_tools::SkillRegistry>) {
-        *self.tool_executor.write().await = Some(executor);
-    }
-
-    async fn set_tool_registry(&self, registry: Arc<openclaw_tools::ToolRegistry>) {
-        *self.tool_registry.write().await = Some(registry);
-    }
-
-    async fn set_device_tool_registry(&self, registry: Arc<crate::DeviceToolRegistry>) {
-        *self.device_tool_registry.write().await = Some(registry);
-    }
-
-    async fn get_device_tool_registry(&self) -> Option<Arc<crate::DeviceToolRegistry>> {
-        self.device_tool_registry.read().await.clone()
-    }
-
-    async fn inject_dependencies(
-        &self,
-        provider: Arc<dyn AIProvider>,
-        memory: Option<Arc<MemoryManager>>,
-        pipeline: Arc<SecurityPipeline>,
-        tool_registry: Option<Arc<openclaw_tools::ToolRegistry>>,
-    ) {
-        *self.ai_provider.write().await = Some(provider);
-        self.set_memory(memory).await;
-        *self.security_pipeline.write().await = Some(pipeline);
-        if let Some(registry) = tool_registry {
-            *self.tool_registry.write().await = Some(registry);
-        }
-    }
-
     /// 执行工具
     async fn execute_tool(
         &self,
@@ -572,18 +490,6 @@ impl Agent for BaseAgent {
         
         // 如果 skill 不存在，返回错误
         Err(format!("Tool '{}' not found or not available", name))
-    }
-
-    async fn get_ai_provider(&self) -> Option<Arc<dyn AIProvider>> {
-        self.ai_provider.read().await.clone()
-    }
-
-    async fn get_memory(&self) -> Option<Arc<MemoryManager>> {
-        self.memory.lock().await.clone()
-    }
-
-    async fn get_security_pipeline(&self) -> Option<Arc<SecurityPipeline>> {
-        self.security_pipeline.read().await.clone()
     }
 
     async fn inject_ports(

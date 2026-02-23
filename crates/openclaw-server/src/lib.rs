@@ -15,6 +15,7 @@ pub mod device_manager;
 pub mod gateway;
 pub mod hardware_tools;
 pub mod orchestrator;
+pub mod ports;
 pub mod service_factory;
 pub mod sse;
 pub mod vector_store_registry;

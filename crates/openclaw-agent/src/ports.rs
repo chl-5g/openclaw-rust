@@ -67,6 +67,40 @@ pub trait ToolPort: Send + Sync {
     async fn list_tools(&self) -> Result<Vec<ToolInfo>>;
 }
 
+#[derive(Debug, Clone)]
+pub struct CameraInfo {
+    pub id: String,
+    pub name: String,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScreenInfo {
+    pub id: String,
+    pub name: String,
+    pub resolution: Option<(u32, u32)>,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct LocationInfo {
+    pub id: String,
+    pub available: bool,
+}
+
+#[async_trait]
+pub trait DevicePort: Send + Sync {
+    async fn list_cameras(&self) -> Result<Vec<CameraInfo>>;
+    async fn capture_camera(&self, camera_id: &str, path: &str) -> Result<String>;
+    
+    async fn list_screens(&self) -> Result<Vec<ScreenInfo>>;
+    async fn capture_screen(&self, screen_id: &str, path: &str) -> Result<String>;
+    
+    async fn get_location(&self) -> Result<LocationInfo>;
+    async fn start_location_tracking(&self) -> Result<()>;
+    async fn stop_location_tracking(&self) -> Result<()>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use crate::{Agent, BaseAgent, TaskInput, TaskRequest, TaskType};
+use crate::ports::AIPort;
 use openclaw_ai::{
     AIProvider,
     models::get_all_models,
@@ -116,36 +117,36 @@ pub fn create_provider_by_name(
 
 // ============== Agent 创建函数 ==============
 
-/// 为 Agent 配置 AI 提供商
-pub async fn configure_agent_with_ai(agent: &BaseAgent, provider: Arc<dyn AIProvider>) {
-    agent.set_ai_provider(provider).await;
+/// 为 Agent 配置 AI 提供商 - 调用方需要传入包装好的 AIPort
+pub async fn configure_agent_with_ai_port(agent: &BaseAgent, ai_port: Arc<dyn AIPort>) {
+    agent.inject_ports(Some(ai_port), None, None, None).await;
 }
 
-/// 创建配置好 AI 的 Coder Agent
-pub async fn create_coder_agent(provider: Arc<dyn AIProvider>) -> BaseAgent {
+/// 创建配置好 AI 的 Coder Agent - 调用方需要传入包装好的 AIPort
+pub async fn create_coder_agent_with_port(ai_port: Arc<dyn AIPort>) -> BaseAgent {
     let agent = BaseAgent::coder();
-    agent.set_ai_provider(provider).await;
+    configure_agent_with_ai_port(&agent, ai_port).await;
     agent
 }
 
-/// 创建配置好 AI 的 Conversationalist Agent
-pub async fn create_chat_agent(provider: Arc<dyn AIProvider>) -> BaseAgent {
+/// 创建配置好 AI 的 Conversationalist Agent - 调用方需要传入包装好的 AIPort
+pub async fn create_chat_agent_with_port(ai_port: Arc<dyn AIPort>) -> BaseAgent {
     let agent = BaseAgent::conversationalist();
-    agent.set_ai_provider(provider).await;
+    configure_agent_with_ai_port(&agent, ai_port).await;
     agent
 }
 
-/// 创建配置好 AI 的 Researcher Agent
-pub async fn create_researcher_agent(provider: Arc<dyn AIProvider>) -> BaseAgent {
+/// 创建配置好 AI 的 Researcher Agent - 调用方需要传入包装好的 AIPort
+pub async fn create_researcher_agent_with_port(ai_port: Arc<dyn AIPort>) -> BaseAgent {
     let agent = BaseAgent::researcher();
-    agent.set_ai_provider(provider).await;
+    configure_agent_with_ai_port(&agent, ai_port).await;
     agent
 }
 
-/// 创建配置好 AI 的 Writer Agent
-pub async fn create_writer_agent(provider: Arc<dyn AIProvider>) -> BaseAgent {
+/// 创建配置好 AI 的 Writer Agent - 调用方需要传入包装好的 AIPort
+pub async fn create_writer_agent_with_port(ai_port: Arc<dyn AIPort>) -> BaseAgent {
     let agent = BaseAgent::writer();
-    agent.set_ai_provider(provider).await;
+    configure_agent_with_ai_port(&agent, ai_port).await;
     agent
 }
 

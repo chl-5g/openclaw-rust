@@ -105,28 +105,6 @@ impl Orchestrator {
         self
     }
 
-    /// 注入设备工具到所有 Agent
-    pub async fn inject_device_tools(&self) -> Result<()> {
-        let registry = match &self.device_tool_registry {
-            Some(r) => r.clone(),
-            None => {
-                warn!("No device tool registry configured");
-                return Ok(());
-            }
-        };
-
-        let agent_ids = self.team.agent_ids();
-        let count = agent_ids.len();
-        for agent_id in agent_ids {
-            if let Some(agent) = self.team.get_agent(&agent_id) {
-                agent.set_device_tool_registry(registry.clone()).await;
-            }
-        }
-        
-        info!("Device tools injected to {} agents", count);
-        Ok(())
-    }
-
     /// 获取设备管理器
     pub fn get_device_manager(&self) -> Option<Arc<openclaw_device::UnifiedDeviceManager>> {
         self.device_manager.clone()

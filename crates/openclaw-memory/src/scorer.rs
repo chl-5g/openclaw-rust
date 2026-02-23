@@ -3,7 +3,7 @@
 use openclaw_core::{Content, Message};
 use regex::Regex;
 
-/// 重要性评分器
+#[derive(Clone)]
 pub struct ImportanceScorer {
     /// 实体正则表达式 (人名、地点、时间等)
     entity_patterns: Vec<Regex>,

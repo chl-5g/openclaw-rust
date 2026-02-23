@@ -113,6 +113,9 @@ pub struct MemoryConfig {
     pub short_term: ShortTermMemoryConfig,
     /// 长期记忆配置
     pub long_term: LongTermMemoryConfig,
+    /// 嵌入向量维度 (可选，未设置时从 embedding provider 获取或使用默认值)
+    #[serde(default)]
+    pub embedding_dimensions: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

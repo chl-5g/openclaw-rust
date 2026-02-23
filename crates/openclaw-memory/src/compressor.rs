@@ -4,6 +4,7 @@ use crate::types::{MemoryItem, ShortTermMemoryConfig};
 use openclaw_core::{Message, OpenClawError, Result};
 
 /// 记忆压缩器
+#[derive(Clone)]
 pub struct MemoryCompressor {
     config: ShortTermMemoryConfig,
 }

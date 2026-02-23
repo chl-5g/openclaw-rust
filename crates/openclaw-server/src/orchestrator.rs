@@ -21,6 +21,7 @@ use openclaw_memory::MemoryManager;
 use openclaw_security::SecurityPipeline;
 
 use crate::agentic_rag::AgenticRAGEngine;
+use crate::ports::{AiPortAdapter, MemoryPortAdapter, SecurityPortAdapter, ToolPortAdapter};
 
 #[cfg(feature = "per_session_memory")]
 const DEFAULT_MAX_SESSION_MEMORIES: usize = 100;
@@ -313,6 +314,7 @@ impl ServiceOrchestrator {
                 let ai_provider = self.ai_provider.clone();
                 let memory_manager = self.memory_manager.clone();
                 let security_pipeline = self.security_pipeline.clone();
+                let tool_executor = self.tool_executor.clone();
                 tokio::spawn(async move {
                     let ai = {
                         let p = ai_provider.read().await;
@@ -326,10 +328,31 @@ impl ServiceOrchestrator {
                         let s = security_pipeline.read().await;
                         s.clone()
                     };
-                    if let (Some(ai), Some(sec)) = (ai, sec)
-                        && let Some(m) = mem {
-                            agent_to_inject.inject_dependencies(ai, Some(m), sec, None).await;
-                        }
+                    let tools = {
+                        let t = tool_executor.read().await;
+                        t.clone()
+                    };
+                    
+                    if let (Some(ai), Some(sec)) = (ai, sec) {
+                        let ai_port = Arc::new(AiPortAdapter { provider: ai }) as Arc<dyn openclaw_agent::ports::AIPort>;
+                        
+                        let memory_port = mem.as_ref().map(|m| 
+                            Arc::new(MemoryPortAdapter::new(m.clone())) as Arc<dyn openclaw_agent::ports::MemoryPort>
+                        );
+                        
+                        let security_port = Arc::new(SecurityPortAdapter { pipeline: sec }) as Arc<dyn openclaw_agent::ports::SecurityPort>;
+                        
+                        let tool_port = tools.as_ref().map(|t|
+                            Arc::new(ToolPortAdapter { registry: t.clone() }) as Arc<dyn openclaw_agent::ports::ToolPort>
+                        );
+                        
+                        agent_to_inject.inject_ports(
+                            Some(ai_port),
+                            memory_port,
+                            Some(security_port),
+                            tool_port,
+                        ).await;
+                    }
                 });
             }
     }
@@ -361,11 +384,15 @@ impl ServiceOrchestrator {
 
         let mem_lock = memory_manager.clone();
         for agent in agents {
-            agent.inject_dependencies(
-                ai_provider.clone(),
-                mem_lock.clone(),
-                security_pipeline.clone(),
-                tool_registry.clone(),
+            let ai_port = Arc::new(AiPortAdapter { provider: ai_provider.clone() }) as Arc<dyn openclaw_agent::ports::AIPort>;
+            let memory_port = mem_lock.clone().map(|m| Arc::new(MemoryPortAdapter::new(m)) as Arc<dyn openclaw_agent::ports::MemoryPort>);
+            let security_port = Arc::new(SecurityPortAdapter { pipeline: security_pipeline.clone() }) as Arc<dyn openclaw_agent::ports::SecurityPort>;
+            
+            agent.inject_ports(
+                Some(ai_port),
+                memory_port,
+                Some(security_port),
+                None,
             ).await;
         }
 
@@ -531,10 +558,18 @@ impl ServiceOrchestrator {
                 if let Some(ref sid) = session_id {
                     if let Ok(uuid) = uuid::Uuid::parse_str(sid) {
                         if let Some(session_memory) = self.get_session_memory(&uuid).await {
-                            agent.inject_dependencies(
-                                self.ai_provider.read().await.clone().unwrap(),
-                                Some(session_memory),
-                                self.security_pipeline.read().await.clone().unwrap(),
+                            let ai_port = Arc::new(AiPortAdapter { 
+                                provider: self.ai_provider.read().await.clone().unwrap()
+                            }) as Arc<dyn openclaw_agent::ports::AIPort>;
+                            let memory_port = Arc::new(MemoryPortAdapter::new(session_memory)) as Arc<dyn openclaw_agent::ports::MemoryPort>;
+                            let security_port = Arc::new(SecurityPortAdapter { 
+                                pipeline: self.security_pipeline.read().await.clone().unwrap()
+                            }) as Arc<dyn openclaw_agent::ports::SecurityPort>;
+                            
+                            agent.inject_ports(
+                                Some(ai_port),
+                                Some(memory_port),
+                                Some(security_port),
                                 None,
                             ).await;
                         }
@@ -870,25 +905,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_orchestrator_inject_dependencies() {
+    async fn test_orchestrator_inject_ports() {
         use openclaw_agent::mock::mock::MockAiProvider;
         use openclaw_agent::Agent;
         use openclaw_memory::MemoryManager;
         use openclaw_security::SecurityPipeline;
-        use openclaw_tools::ToolRegistry;
+        use crate::ports::{AiPortAdapter, SecurityPortAdapter};
         
         let orchestrator = ServiceOrchestrator::new(OrchestratorConfig::default());
         
         let ai_provider: Arc<dyn AIProvider> = Arc::new(MockAiProvider::new());
-        let memory_manager: Option<Arc<MemoryManager>> = None;
         let security_pipeline = Arc::new(SecurityPipeline::default());
-        let tool_registry: Option<Arc<ToolRegistry>> = None;
         
-        orchestrator.inject_dependencies(
-            ai_provider,
-            memory_manager,
-            security_pipeline,
-            tool_registry,
+        let ai_port = Arc::new(AiPortAdapter { provider: ai_provider }) as Arc<dyn openclaw_agent::ports::AIPort>;
+        let security_port = Arc::new(SecurityPortAdapter { pipeline: security_pipeline }) as Arc<dyn openclaw_agent::ports::SecurityPort>;
+        
+        orchestrator.inject_ports(
+            Some(ai_port),
+            None,
+            Some(security_port),
+            None,
         ).await;
         
         let provider = orchestrator.get_ai_provider().await;

@@ -14,6 +14,7 @@ use crate::types::{MemoryConfig, MemoryContent, MemoryItem, MemoryLevel, MemoryR
 use crate::working::WorkingMemory;
 
 /// 记忆管理器 - 统一管理三层记忆
+#[derive(Clone)]
 pub struct MemoryManager {
     working: WorkingMemory,
     short_term: Vec<MemoryItem>,
@@ -55,6 +56,18 @@ impl MemoryManager {
     pub fn with_embedding_provider<E: EmbeddingProvider + 'static>(mut self, provider: E) -> Self {
         self.embedding_provider = Some(Arc::new(provider));
         self
+    }
+
+    /// 获取嵌入向量维度
+    /// 优先级: 1. 配置中的 embedding_dimensions 2. embedding_provider.dimensions() 3. 默认值 1536
+    pub fn embedding_dimensions(&self) -> usize {
+        if let Some(dims) = self.config.embedding_dimensions {
+            return dims;
+        }
+        if let Some(provider) = &self.embedding_provider {
+            return provider.dimensions();
+        }
+        1536
     }
 
     /// 自动召回相关记忆

@@ -54,15 +54,6 @@ impl Gateway {
                 orchestrator.init_agents_from_config(&self.config).await?;
             }
 
-            orchestrator
-                .inject_dependencies(
-                    self.context.ai_provider.clone(),
-                    self.context.memory_manager.clone(),
-                    self.context.security_pipeline.clone(),
-                    Some(self.context.tool_registry.clone()),
-                )
-                .await;
-
             let ai_port = Arc::new(AIProviderAdapter::new(self.context.ai_provider.clone(), "default")) as Arc<dyn openclaw_agent::ports::AIPort>;
             let security_port = Arc::new(SecurityPipelineAdapter::new(self.context.security_pipeline.clone())) as Arc<dyn openclaw_agent::ports::SecurityPort>;
             let tool_port = Arc::new(ToolRegistryAdapter::new(self.context.tool_registry.clone())) as Arc<dyn openclaw_agent::ports::ToolPort>;
