@@ -14,7 +14,6 @@ use crate::types::{MemoryConfig, MemoryContent, MemoryItem, MemoryLevel, MemoryR
 use crate::working::WorkingMemory;
 
 /// 记忆管理器 - 统一管理三层记忆
-#[derive(Clone)]
 pub struct MemoryManager {
     working: WorkingMemory,
     short_term: Vec<MemoryItem>,
@@ -24,14 +23,6 @@ pub struct MemoryManager {
     scorer: ImportanceScorer,
     compressor: MemoryCompressor,
     embedding_provider: Option<Arc<dyn EmbeddingProvider>>,
-}
-
-impl std::fmt::Debug for MemoryManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MemoryManager")
-            .field("config", &self.config)
-            .finish()
-    }
 }
 
 impl MemoryManager {
@@ -69,15 +60,9 @@ impl MemoryManager {
     /// 自动召回相关记忆
     pub async fn recall(&self, query: &str) -> Result<RecallResult> {
         if let Some(provider) = &self.embedding_provider {
-            if let Some(store) = &self.long_term {
-                let recall_tool = SimpleMemoryRecall::new(provider.clone(), store.clone());
-                let result = recall_tool.recall(query, None).await?;
-                Ok(result)
-            } else {
-                Err(OpenClawError::Memory(
-                    "Vector store not configured".to_string(),
-                ))
-            }
+            let recall_tool = SimpleMemoryRecall::new(provider.clone());
+            let result = recall_tool.recall(query, None).await?;
+            Ok(result)
         } else {
             Err(OpenClawError::Memory(
                 "Embedding provider not configured".to_string(),
