@@ -108,6 +108,7 @@ pub fn default_voice_config() -> VoiceConfig {
         tts_config: TtsConfig::default(),
         enabled: false,
         custom_providers: None,
+        vault: None,
     }
 }
 

@@ -1,8 +1,33 @@
 //! 语音模块类型定义
 
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::provider::CustomProviderConfig;
+
+/// Vault trait for credential storage
+#[async_trait::async_trait]
+pub trait CredentialVault: Send + Sync {
+    async fn get(&self, key: &str) -> Result<Option<String>, String>;
+    async fn set(&self, key: &str, value: &str) -> Result<(), String>;
+    async fn delete(&self, key: &str) -> Result<(), String>;
+}
+
+/// Null vault implementation (no-op, for backward compatibility)
+pub struct NullVault;
+
+#[async_trait::async_trait]
+impl CredentialVault for NullVault {
+    async fn get(&self, _key: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+    async fn set(&self, _key: &str, _value: &str) -> Result<(), String> {
+        Ok(())
+    }
+    async fn delete(&self, _key: &str) -> Result<(), String> {
+        Ok(())
+    }
+}
 
 /// STT 提供商
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -190,7 +215,7 @@ pub enum TalkModeState {
 }
 
 /// 语音配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct VoiceConfig {
     /// STT 提供商
     pub stt_provider: SttProvider,
@@ -207,6 +232,34 @@ pub struct VoiceConfig {
     /// 自定义提供商配置
     #[serde(default)]
     pub custom_providers: Option<CustomProviderConfig>,
+    /// Credential Vault for secure API key storage
+    #[serde(skip)]
+    pub vault: Option<Arc<dyn CredentialVault>>,
+}
+
+impl std::fmt::Debug for VoiceConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VoiceConfig")
+            .field("stt_provider", &self.stt_provider)
+            .field("tts_provider", &self.tts_provider)
+            .field("stt_config", &self.stt_config)
+            .field("tts_config", &self.tts_config)
+            .field("enabled", &self.enabled)
+            .field("custom_providers", &self.custom_providers)
+            .field("vault", &if self.vault.is_some() { "Some(...)" } else { "None" })
+            .finish()
+    }
+}
+
+impl VoiceConfig {
+    pub fn with_vault(mut self, vault: Arc<dyn CredentialVault>) -> Self {
+        let vault_clone = vault.clone();
+        self.stt_config.vault = Some(vault_clone);
+        let vault_clone = vault.clone();
+        self.tts_config.vault = Some(vault_clone);
+        self.vault = Some(vault);
+        self
+    }
 }
 
 impl Default for VoiceConfig {
@@ -218,12 +271,13 @@ impl Default for VoiceConfig {
             tts_config: TtsConfig::default(),
             enabled: false,
             custom_providers: None,
+            vault: None,
         }
     }
 }
 
 /// STT 配置
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct SttConfig {
     /// OpenAI API Key
     pub openai_api_key: Option<String>,
@@ -242,10 +296,29 @@ pub struct SttConfig {
     pub azure_region: Option<String>,
     /// Google Cloud API Key
     pub google_api_key: Option<String>,
+    /// Credential Vault for secure API key storage
+    #[serde(skip)]
+    pub vault: Option<Arc<dyn CredentialVault>>,
+}
+
+impl std::fmt::Debug for SttConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SttConfig")
+            .field("openai_api_key", &self.openai_api_key.as_deref().map(|_| "***"))
+            .field("openai_base_url", &self.openai_base_url)
+            .field("whisper_model", &self.whisper_model)
+            .field("language", &self.language)
+            .field("local_model_path", &self.local_model_path)
+            .field("azure_api_key", &self.azure_api_key.as_deref().map(|_| "***"))
+            .field("azure_region", &self.azure_region)
+            .field("google_api_key", &self.google_api_key.as_deref().map(|_| "***"))
+            .field("vault", &if self.vault.is_some() { "Some(...)" } else { "None" })
+            .finish()
+    }
 }
 
 /// TTS 配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TtsConfig {
     /// OpenAI API Key
     pub openai_api_key: Option<String>,
@@ -274,6 +347,28 @@ pub struct TtsConfig {
     pub azure_region: Option<String>,
     /// Google Cloud API Key
     pub google_api_key: Option<String>,
+    /// Credential Vault for secure API key storage
+    #[serde(skip)]
+    pub vault: Option<Arc<dyn CredentialVault>>,
+}
+
+impl std::fmt::Debug for TtsConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TtsConfig")
+            .field("openai_api_key", &self.openai_api_key.as_deref().map(|_| "***"))
+            .field("openai_base_url", &self.openai_base_url)
+            .field("tts_model", &self.tts_model)
+            .field("default_voice", &self.default_voice)
+            .field("default_speed", &self.default_speed)
+            .field("default_format", &self.default_format)
+            .field("elevenlabs_api_key", &self.elevenlabs_api_key.as_deref().map(|_| "***"))
+            .field("elevenlabs_model", &self.elevenlabs_model)
+            .field("azure_api_key", &self.azure_api_key.as_deref().map(|_| "***"))
+            .field("azure_region", &self.azure_region)
+            .field("google_api_key", &self.google_api_key.as_deref().map(|_| "***"))
+            .field("vault", &if self.vault.is_some() { "Some(...)" } else { "None" })
+            .finish()
+    }
 }
 
 fn default_speed() -> f32 {
@@ -298,6 +393,203 @@ impl Default for TtsConfig {
             azure_api_key: None,
             azure_region: None,
             google_api_key: None,
+            vault: None,
         }
+    }
+}
+
+impl TtsConfig {
+    pub fn with_vault(mut self, vault: Arc<dyn CredentialVault>) -> Self {
+        self.vault = Some(vault);
+        self
+    }
+
+    pub async fn get_openai_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("tts/openai_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.openai_api_key.clone()
+            .ok_or_else(|| "OpenAI API key not configured".to_string())
+    }
+
+    pub async fn get_elevenlabs_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("tts/elevenlabs_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.elevenlabs_api_key.clone()
+            .ok_or_else(|| "ElevenLabs API key not configured".to_string())
+    }
+
+    pub async fn get_azure_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("tts/azure_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.azure_api_key.clone()
+            .ok_or_else(|| "Azure API key not configured".to_string())
+    }
+
+    pub async fn get_google_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("tts/google_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.google_api_key.clone()
+            .ok_or_else(|| "Google API key not configured".to_string())
+    }
+}
+
+impl SttConfig {
+    pub fn with_vault(mut self, vault: Arc<dyn CredentialVault>) -> Self {
+        self.vault = Some(vault);
+        self
+    }
+
+    pub async fn get_openai_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("stt/openai_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.openai_api_key.clone()
+            .ok_or_else(|| "OpenAI API key not configured".to_string())
+    }
+
+    pub async fn get_azure_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("stt/azure_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.azure_api_key.clone()
+            .ok_or_else(|| "Azure API key not configured".to_string())
+    }
+
+    pub async fn get_google_api_key(&self) -> Result<String, String> {
+        if let Some(ref vault) = self.vault {
+            if let Some(key) = vault.get("stt/google_api_key").await? {
+                return Ok(key);
+            }
+        }
+        self.google_api_key.clone()
+            .ok_or_else(|| "Google API key not configured".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    #[derive(Debug)]
+    struct TestVault {
+        store: Arc<RwLock<std::collections::HashMap<String, String>>>,
+    }
+
+    #[async_trait::async_trait]
+    impl CredentialVault for TestVault {
+        async fn get(&self, key: &str) -> Result<Option<String>, String> {
+            let store = self.store.read().await;
+            Ok(store.get(key).cloned())
+        }
+
+        async fn set(&self, key: &str, value: &str) -> Result<(), String> {
+            let mut store = self.store.write().await;
+            store.insert(key.to_string(), value.to_string());
+            Ok(())
+        }
+
+        async fn delete(&self, key: &str) -> Result<(), String> {
+            let mut store = self.store.write().await;
+            store.remove(key);
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tts_config_vault_fallback_to_direct() {
+        let config = TtsConfig {
+            elevenlabs_api_key: Some("test-key-from-config".to_string()),
+            vault: None,
+            ..Default::default()
+        };
+
+        let key = config.get_elevenlabs_api_key().await.unwrap();
+        assert_eq!(key, "test-key-from-config");
+    }
+
+    #[tokio::test]
+    async fn test_tts_config_vault_takes_precedence() {
+        let vault = Arc::new(TestVault {
+            store: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        });
+
+        vault.set("tts/elevenlabs_api_key", "key-from-vault").await.unwrap();
+
+        let config = TtsConfig {
+            elevenlabs_api_key: Some("test-key-from-config".to_string()),
+            vault: Some(vault),
+            ..Default::default()
+        };
+
+        let key = config.get_elevenlabs_api_key().await.unwrap();
+        assert_eq!(key, "key-from-vault");
+    }
+
+    #[tokio::test]
+    async fn test_tts_config_vault_not_found_falls_back_to_direct() {
+        let vault = Arc::new(TestVault {
+            store: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        });
+
+        let config = TtsConfig {
+            elevenlabs_api_key: Some("test-key-from-config".to_string()),
+            vault: Some(vault),
+            ..Default::default()
+        };
+
+        let key = config.get_elevenlabs_api_key().await.unwrap();
+        assert_eq!(key, "test-key-from-config");
+    }
+
+    #[tokio::test]
+    async fn test_tts_config_no_key_available() {
+        let config = TtsConfig::default();
+
+        let result = config.get_elevenlabs_api_key().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_stt_config_vault_fallback_to_direct() {
+        let config = SttConfig {
+            openai_api_key: Some("test-key-from-config".to_string()),
+            vault: None,
+            ..Default::default()
+        };
+
+        let key = config.get_openai_api_key().await.unwrap();
+        assert_eq!(key, "test-key-from-config");
+    }
+
+    #[tokio::test]
+    async fn test_voice_config_with_vault() {
+        let vault = Arc::new(TestVault {
+            store: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        });
+
+        vault.set("tts/elevenlabs_api_key", "voice-vault-key").await.unwrap();
+
+        let config = VoiceConfig::default().with_vault(vault);
+
+        let key = config.tts_config.get_elevenlabs_api_key().await.unwrap();
+        assert_eq!(key, "voice-vault-key");
     }
 }

@@ -64,11 +64,11 @@ impl OpenAITts {
             .unwrap_or_else(|| Self::API_URL.to_string())
     }
 
-    fn get_api_key(&self) -> Result<String> {
+    async fn get_api_key(&self) -> Result<String> {
         self.config
-            .openai_api_key
-            .clone()
-            .ok_or_else(|| OpenClawError::Config("未配置 OpenAI API Key".to_string()))
+            .get_openai_api_key()
+            .await
+            .map_err(|e| OpenClawError::Config(e))
     }
 
     fn get_response_format(&self, format: &AudioFormat) -> &'static str {
@@ -89,7 +89,7 @@ impl TextToSpeech for OpenAITts {
     }
 
     async fn synthesize(&self, text: &str, options: Option<SynthesisOptions>) -> Result<Vec<u8>> {
-        let api_key = self.get_api_key()?;
+        let api_key = self.get_api_key().await?;
         let url = self.get_api_url();
 
         let opts = options.unwrap_or_default();
@@ -136,7 +136,7 @@ impl TextToSpeech for OpenAITts {
     }
 
     async fn is_available(&self) -> bool {
-        self.config.openai_api_key.is_some()
+        self.config.get_openai_api_key().await.is_ok()
     }
 
     fn available_voices(&self) -> Vec<String> {
@@ -217,11 +217,11 @@ impl ElevenLabsTts {
         }
     }
 
-    fn get_api_key(&self) -> Result<String> {
+    async fn get_api_key(&self) -> Result<String> {
         self.config
-            .elevenlabs_api_key
-            .clone()
-            .ok_or_else(|| OpenClawError::Config("未配置 ElevenLabs API Key".to_string()))
+            .get_elevenlabs_api_key()
+            .await
+            .map_err(|e| OpenClawError::Config(e))
     }
 }
 
@@ -238,7 +238,7 @@ impl TextToSpeech for ElevenLabsTts {
     }
 
     async fn synthesize(&self, text: &str, options: Option<SynthesisOptions>) -> Result<Vec<u8>> {
-        let api_key = self.get_api_key()?;
+        let api_key = self.get_api_key().await?;
         let model = &self.config.elevenlabs_model;
 
         let voice_id = options
@@ -285,7 +285,7 @@ impl TextToSpeech for ElevenLabsTts {
     }
 
     async fn is_available(&self) -> bool {
-        self.config.elevenlabs_api_key.is_some()
+        self.config.get_elevenlabs_api_key().await.is_ok()
     }
 
     fn available_voices(&self) -> Vec<String> {
