@@ -14,6 +14,7 @@ mod commands;
 mod daemon_cmd;
 mod doctor_cmd;
 mod message_cmd;
+mod onboard;
 mod skill_cmd;
 mod voice_cmd;
 mod wizard_cmd;
