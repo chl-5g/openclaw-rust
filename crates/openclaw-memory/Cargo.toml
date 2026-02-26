@@ -20,6 +20,7 @@ tracing.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 tiktoken-rs.workspace = true
+tempfile.workspace = true
 regex = "1.11"
 reqwest = { version = "0.12", features = ["json"] }
 tantivy = "0.22"

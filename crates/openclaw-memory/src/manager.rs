@@ -1,5 +1,6 @@
 //! 记忆管理器
 
+use std::path::Path;
 use std::sync::Arc;
 
 use openclaw_core::{Message, OpenClawError, Result};
@@ -14,6 +15,7 @@ use crate::types::{MemoryConfig, MemoryContent, MemoryItem, MemoryLevel, MemoryR
 use crate::working::WorkingMemory;
 
 /// 记忆管理器 - 统一管理三层记忆
+#[derive(Clone)]
 pub struct MemoryManager {
     working: WorkingMemory,
     short_term: Vec<MemoryItem>,
@@ -258,6 +260,151 @@ impl Default for MemoryManager {
     }
 }
 
+impl MemoryManager {
+    pub async fn export_to_markdown(&self, path: &Path) -> Result<usize> {
+        let mut md = String::from("# AI 记忆\n\n");
+        let mut count = 0;
+
+        let working_items = self.working.get_all();
+        if !working_items.is_empty() {
+            md.push_str("## 最近对话\n\n");
+            for item in working_items.iter().rev().take(50) {
+                let content = item.content.to_text();
+                if !content.is_empty() {
+                    md.push_str(&format!("- {}\n", content));
+                    count += 1;
+                }
+            }
+            md.push_str("\n---\n\n");
+        }
+
+        if !self.short_term.is_empty() {
+            md.push_str("## 摘要\n\n");
+            for item in &self.short_term {
+                let content = item.content.to_text();
+                if !content.is_empty() {
+                    md.push_str(&format!(
+                        "### {}\n\n{}\n\n---\n\n",
+                        item.created_at.format("%Y-%m-%d %H:%M"),
+                        content
+                    ));
+                    count += 1;
+                }
+            }
+        }
+
+        if let Some(store) = &self.long_term {
+            let empty_vector = vec![0.0; 384];
+            let query = openclaw_vector::SearchQuery::new(empty_vector);
+            if let Ok(items) = store.search(query).await {
+                md.push_str("## 长期记忆\n\n");
+                for item in items {
+                    let content = item
+                        .payload
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    if !content.is_empty() {
+                        md.push_str(&format!("- {}\n", content));
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        tokio::fs::write(path, md).await?;
+        Ok(count)
+    }
+
+    pub async fn export_related_to_markdown(&self, query: &str, path: &Path) -> Result<usize> {
+        let result = self.recall(query).await?;
+        let mut md = String::from("# AI 记忆 - 相关记忆\n\n");
+        md.push_str(&format!("## 查询: {}\n\n---\n\n", query));
+        let mut count = 0;
+
+        for item in result.items {
+            let content = &item.content;
+            if !content.is_empty() {
+                md.push_str(&format!(
+                    "### [相关性: {:.2}] {}\n\n{}\n\n---\n\n",
+                    item.similarity,
+                    item.memory_level,
+                    content
+                ));
+                count += 1;
+            }
+        }
+
+        tokio::fs::write(path, md).await?;
+        Ok(count)
+    }
+
+    pub async fn import_from_markdown(&self, path: &Path) -> Result<usize> {
+        let content = tokio::fs::read_to_string(path).await?;
+        let items = self.parse_markdown_entries(&content)?;
+        let mut count = 0;
+
+        for item in items {
+            if let Some(store) = &self.long_term {
+                store.upsert(item).await?;
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
+    fn parse_markdown_entries(&self, content: &str) -> Result<Vec<openclaw_vector::VectorItem>> {
+        let mut items = Vec::new();
+        let mut current_section = String::new();
+
+        for line in content.lines() {
+            if line.starts_with('#') {
+                if !current_section.trim().is_empty() {
+                    if let Some(item) = self.create_vector_item(&current_section) {
+                        items.push(item);
+                    }
+                }
+                current_section = String::new();
+                continue;
+            }
+
+            if line.starts_with("---") || line.starts_with('-') {
+                continue;
+            }
+
+            current_section.push_str(line);
+            current_section.push('\n');
+        }
+
+        if !current_section.trim().is_empty() {
+            if let Some(item) = self.create_vector_item(&current_section) {
+                items.push(item);
+            }
+        }
+
+        Ok(items)
+    }
+
+    fn create_vector_item(&self, content: &str) -> Option<openclaw_vector::VectorItem> {
+        let text = content.trim().to_string();
+        if text.is_empty() {
+            return None;
+        }
+
+        Some(openclaw_vector::VectorItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            vector: vec![0.0; 384],
+            payload: serde_json::json!({
+                "content": text,
+                "source": "markdown_import",
+                "created_at": chrono::Utc::now().to_rfc3339()
+            }),
+            created_at: chrono::Utc::now(),
+        })
+    }
+}
+
 /// 记忆统计信息
 #[derive(Debug, Clone)]
 pub struct MemoryStats {
@@ -271,12 +418,12 @@ pub struct MemoryStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_memory_manager() {
         let mut manager = MemoryManager::default();
 
-        // 添加消息
         manager.add(Message::user("你好")).await.unwrap();
         manager.add(Message::assistant("你好！")).await.unwrap();
 
@@ -304,5 +451,115 @@ mod tests {
             preview: "Preview text".to_string(),
         };
         assert_eq!(vector_ref.to_text(), "Preview text");
+    }
+
+    #[tokio::test]
+    async fn test_export_to_markdown_empty() {
+        let manager = MemoryManager::default();
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("empty.md");
+
+        let count = manager.export_to_markdown(&path).await.unwrap();
+
+        assert_eq!(count, 0);
+        let content = tokio::fs::read_to_string(&path).await.unwrap();
+        assert!(content.contains("# AI 记忆"));
+    }
+
+    #[tokio::test]
+    async fn test_export_to_markdown_with_working_memory() {
+        let mut manager = MemoryManager::default();
+        manager.add(Message::user("测试消息1")).await.unwrap();
+        manager.add(Message::assistant("测试回复1")).await.unwrap();
+
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("test.md");
+
+        let count = manager.export_to_markdown(&path).await.unwrap();
+
+        assert!(count > 0);
+        let content = tokio::fs::read_to_string(&path).await.unwrap();
+        assert!(content.contains("测试消息1"));
+        assert!(content.contains("测试回复1"));
+    }
+
+    #[test]
+    fn test_parse_markdown_entries() {
+        let manager = MemoryManager::default();
+        let content = r#"# AI 记忆
+
+## 用户偏好
+
+用户喜欢简洁的回答风格
+
+---
+
+## 项目信息
+
+这是一个测试项目
+"#;
+
+        let items = manager.parse_markdown_entries(content).unwrap();
+        assert!(!items.is_empty());
+        
+        let first_content = items[0].payload.get("content").unwrap().as_str().unwrap();
+        assert!(first_content.contains("用户喜欢简洁的回答风格"));
+    }
+
+    #[test]
+    fn test_parse_markdown_entries_empty_lines() {
+        let manager = MemoryManager::default();
+        let content = r#"# 标题
+
+
+
+内容1
+
+
+
+---
+内容2"#;
+
+        let items = manager.parse_markdown_entries(content).unwrap();
+        assert!(!items.is_empty());
+    }
+
+    #[test]
+    fn test_create_vector_item() {
+        let manager = MemoryManager::default();
+        
+        let item = manager.create_vector_item("测试内容").unwrap();
+        assert!(!item.id.is_empty());
+        assert_eq!(item.vector.len(), 384);
+        assert_eq!(item.payload.get("content").unwrap().as_str().unwrap(), "测试内容");
+        assert_eq!(item.payload.get("source").unwrap().as_str().unwrap(), "markdown_import");
+    }
+
+    #[test]
+    fn test_create_vector_item_empty() {
+        let manager = MemoryManager::default();
+        
+        let item = manager.create_vector_item("");
+        assert!(item.is_none());
+        
+        let item = manager.create_vector_item("   ");
+        assert!(item.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_export_to_markdown_format() {
+        let mut manager = MemoryManager::default();
+        manager.add(Message::user("今天天气真好")).await.unwrap();
+
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("format_test.md");
+
+        manager.export_to_markdown(&path).await.unwrap();
+
+        let content = tokio::fs::read_to_string(&path).await.unwrap();
+        
+        assert!(content.starts_with("# AI 记忆"));
+        assert!(content.contains("## 最近对话"));
+        assert!(content.contains("今天天气真好"));
     }
 }
