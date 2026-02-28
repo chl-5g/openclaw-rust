@@ -3,10 +3,12 @@
 //! 集中管理所有服务的创建逻辑，将 Gateway 从工厂职责中解放
 
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use openclaw_ai::AIProvider;
+use openclaw_channels::config::{ChannelConfigEntry, ChannelConfigs};
 use openclaw_core::{Config, Result};
 use openclaw_device::factory::DeviceManagerFactory;
 use openclaw_device::UnifiedDeviceManager;
@@ -99,16 +101,26 @@ impl ServiceFactory for DefaultServiceFactory {
         let ai_provider = self.create_ai_provider().await?;
         let memory_config = self.config.memory();
 
-        let vector_store = self
+        let vector_store = match self
             .vector_store_registry
             .create(&memory_config.long_term.backend)
             .await
-            .unwrap_or_else(|| {
-                Arc::new(openclaw_vector::MemoryStore::new())
-                    as Arc<dyn openclaw_vector::VectorStore>
-            });
+            {
+                Some(store) => store,
+                None => {
+                    tracing::warn!(
+                        "Failed to create vector store backend '{}'. Falling back to MemoryStore",
+                        memory_config.long_term.backend
+                    );
+                    Arc::new(openclaw_vector::MemoryStore::new())
+                        as Arc<dyn openclaw_vector::VectorStore>
+                }
+            };
 
-        let backend_type = "hybrid";
+        let backend_type = &memory_config.backend_type;
+        if backend_type != "hybrid" {
+            tracing::info!("Creating memory backend with type: {}", backend_type);
+        }
         let backend = create_memory_backend(
             backend_type,
             &memory_config,
@@ -207,17 +219,33 @@ impl ServiceFactory for DefaultServiceFactory {
             let unified = UnifiedDeviceManager::new(registry);
             Ok(Arc::new(unified))
         } else {
-            openclaw_device::factory::init_default_factory();
-            let config = self.config.device();
-            let factory = openclaw_device::factory::get_factory("default")
-                .ok_or_else(|| openclaw_core::OpenClawError::Config("Device factory not found".to_string()))?;
-            factory.create(&config).await.map_err(|e| openclaw_core::OpenClawError::Config(e.to_string()))
+            let registry = openclaw_device::get_or_init_device(false)
+                .await
+                .map_err(|e| openclaw_core::OpenClawError::Config(e.to_string()))?;
+            Ok(Arc::new(UnifiedDeviceManager::new(registry)))
         }
     }
 
     async fn create_app_context(&self, config: Config) -> Result<Arc<AppContext>> {
         let memory_config = self.config.memory();
         let channel_to_agent_map = config.channels.channel_to_agent_map.clone();
+
+        let channel_configs = if let Some(ref channel_config_json) = config.channels.config {
+            let mut configs: ChannelConfigs = ChannelConfigs::default();
+            if let Some(obj) = channel_config_json.as_object() {
+                for (name, value) in obj.iter() {
+                    let entry = ChannelConfigEntry {
+                        channel_type: name.clone(),
+                        config: value.clone(),
+                        enabled: true,
+                    };
+                    configs.0.insert(name.clone(), entry);
+                }
+            }
+            Some(configs)
+        } else {
+            None
+        };
 
         let orchestrator_config = OrchestratorConfig {
             enable_agents: config.server.enable_agents,
@@ -227,6 +255,9 @@ impl ServiceFactory for DefaultServiceFactory {
             default_agent: Some("orchestrator".to_string()),
             channel_to_agent_map,
             agent_to_canvas_map: std::collections::HashMap::new(),
+            channel_configs,
+            enable_evolution: config.server.enable_evolution,
+            evolution_model: config.server.evolution_model.clone(),
             #[cfg(feature = "per_session_memory")]
             enable_per_session_memory: false,
             #[cfg(feature = "per_session_memory")]
@@ -277,6 +308,7 @@ impl ServiceFactory for DefaultServiceFactory {
             unified_device_manager,
             voice_service,
             self.vector_store_registry.clone(),
+            None,
         );
 
         Ok(Arc::new(context))
@@ -319,8 +351,7 @@ impl ServiceFactory for DefaultServiceFactory {
         }
 
         for rule in &acp_config.router.rules {
-            let mut router = (*acp.router()).clone();
-            if let Err(e) = router.add_rule(&rule.pattern, &rule.target, rule.priority) {
+            if let Err(e) = acp.add_route_rule(&rule.pattern, &rule.target, rule.priority) {
                 tracing::warn!("Failed to add route rule: {}", e);
             }
         }

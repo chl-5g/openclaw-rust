@@ -1,4 +1,5 @@
 use openclaw_agent::AgentsConfig;
+use openclaw_core::config::ChannelSettings;
 use openclaw_device::DevicesConfig;
 use openclaw_memory::workspace_config::WorkspacesConfig;
 use openclaw_core::Config as CoreConfig;
@@ -73,6 +74,8 @@ pub struct ServerConfig {
     pub workspaces: WorkspacesConfig,
     #[serde(default)]
     pub acp: AcpConfig,
+    #[serde(default)]
+    pub channels: ChannelSettings,
 }
 
 impl ServerConfig {
@@ -83,6 +86,7 @@ impl ServerConfig {
             devices: DevicesConfig::default(),
             workspaces: WorkspacesConfig::default(),
             acp: AcpConfig::default(),
+            channels: ChannelSettings::default(),
         }
     }
 
@@ -97,6 +101,8 @@ impl ServerConfig {
             .unwrap_or_default();
         let acp = load_yaml_config(config_dir.join("acp.yaml"))
             .unwrap_or_default();
+        let channels = load_yaml_config(config_dir.join("channels.yaml"))
+            .unwrap_or_default();
 
         Ok(Self {
             core,
@@ -104,6 +110,7 @@ impl ServerConfig {
             devices,
             workspaces,
             acp,
+            channels,
         })
     }
 
@@ -148,6 +155,7 @@ impl Default for ServerConfig {
             devices: DevicesConfig::default(),
             workspaces: WorkspacesConfig::default(),
             acp: AcpConfig::default(),
+            channels: ChannelSettings::default(),
         }
     }
 }

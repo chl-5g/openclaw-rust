@@ -14,13 +14,15 @@ use openclaw_agent::task::{TaskInput, TaskRequest, TaskType};
 use openclaw_agent::{Agent, AgentConfig as OpenclawAgentConfig, AgentInfo, AgentType, BaseAgent};
 use openclaw_ai::AIProvider;
 use openclaw_canvas::CanvasManager;
-use openclaw_channels::{ChannelManager, ChannelMessage, SendMessage, register_default_channels};
+use openclaw_channels::{ChannelManager, ChannelMessage, SendMessage, register_channels_from_config};
 use openclaw_core::{Config, Content, Message, OpenClawError, Result, Role};
 
 use openclaw_memory::factory::{MemoryBackend, HybridMemoryBackend};
 use openclaw_memory::MemoryConfig;
 use openclaw_memory::MemoryManager;
 use openclaw_security::SecurityPipeline;
+
+use crate::acp_service::AcpService;
 
 struct MemoryManagerAdapter {
     manager: Arc<Mutex<MemoryManager>>,
@@ -60,7 +62,7 @@ impl MemoryBackend for MemoryManagerAdapter {
 }
 
 use crate::agentic_rag::AgenticRAGEngine;
-use crate::channel_message_handler::{self, create_channel_handler, OrchestratorMessageProcessor};
+use crate::channel_message_handler::{self, create_channel_handler, create_channel_handler_with_acp, OrchestratorMessageProcessor};
 use crate::adapters::ToolRegistryAdapter;
 use crate::ports::{AiPortAdapter, DevicePortAdapter, MemoryPortAdapter, SecurityPortAdapter};
 
@@ -139,6 +141,8 @@ pub struct ServiceOrchestrator {
     channel_factory: Arc<openclaw_channels::ChannelFactoryRegistry>,
     agentic_rag_engine: Arc<RwLock<Option<Arc<AgenticRAGEngine>>>>,
     device_manager: Arc<RwLock<Option<Arc<openclaw_device::UnifiedDeviceManager>>>>,
+    evolution_engine: Arc<RwLock<Option<Arc<openclaw_agent::EvolutionEngine>>>>,
+    shared_skill_registry: Arc<RwLock<Option<Arc<openclaw_agent::evo::registry::SharedSkillRegistry>>>>,
     #[cfg(feature = "per_session_memory")]
     session_memory_cache: Arc<tokio::sync::RwLock<SessionMemoryCache>>,
 }
@@ -204,6 +208,9 @@ pub struct OrchestratorConfig {
     pub default_agent: Option<String>,
     pub channel_to_agent_map: HashMap<String, String>,
     pub agent_to_canvas_map: HashMap<String, String>,
+    pub channel_configs: Option<openclaw_channels::ChannelConfigs>,
+    pub enable_evolution: bool,
+    pub evolution_model: Option<String>,
     #[cfg(feature = "per_session_memory")]
     pub enable_per_session_memory: bool,
     #[cfg(feature = "per_session_memory")]
@@ -222,6 +229,9 @@ impl Default for OrchestratorConfig {
             default_agent: Some("orchestrator".to_string()),
             channel_to_agent_map: HashMap::new(),
             agent_to_canvas_map: HashMap::new(),
+            channel_configs: None,
+            enable_evolution: false,
+            evolution_model: None,
             #[cfg(feature = "per_session_memory")]
             enable_per_session_memory: false,
             #[cfg(feature = "per_session_memory")]
@@ -247,6 +257,22 @@ impl ServiceOrchestrator {
 
         let channel_factory_for_service = channel_factory.clone();
 
+        let (evolution_engine, shared_skill_registry) = if config.enable_evolution {
+            let registry = openclaw_agent::evo::registry::SharedSkillRegistry::new();
+            let model = config.evolution_model.clone().unwrap_or_else(|| "gpt-4".to_string());
+            let engine = openclaw_agent::EvolutionEngine::new()
+                .with_model(model);
+            (
+                Arc::new(RwLock::new(Some(Arc::new(engine)))) as Arc<RwLock<Option<Arc<openclaw_agent::EvolutionEngine>>>>,
+                Arc::new(RwLock::new(Some(Arc::new(registry)))) as Arc<RwLock<Option<Arc<openclaw_agent::evo::registry::SharedSkillRegistry>>>>,
+            )
+        } else {
+            (
+                Arc::new(RwLock::new(None)),
+                Arc::new(RwLock::new(None)),
+            )
+        };
+
         Self {
             agent_service: AgentServiceState::default(),
             channel_service: ChannelServiceState {
@@ -264,6 +290,8 @@ impl ServiceOrchestrator {
             channel_factory,
             agentic_rag_engine: Arc::new(RwLock::new(None)),
             device_manager: Arc::new(RwLock::new(None)),
+            evolution_engine,
+            shared_skill_registry,
             #[cfg(feature = "per_session_memory")]
             session_memory_cache: Arc::new(tokio::sync::RwLock::new(SessionMemoryCache::new(
                 config.max_session_memories,
@@ -277,7 +305,11 @@ impl ServiceOrchestrator {
         }
 
         if self.config.enable_channels {
-            register_default_channels(&self.channel_service.factory).await;
+            if let Some(ref channel_configs) = self.config.channel_configs {
+                register_channels_from_config(&self.channel_service.factory, channel_configs).await;
+            } else {
+                tracing::warn!("No channel configs provided, channels will not be registered");
+            }
 
             let handler = create_channel_handler(Arc::new(OrchestratorMessageProcessor {
                 orchestrator: Arc::new(self.clone()),
@@ -299,6 +331,44 @@ impl ServiceOrchestrator {
 
         *self.running.write().await = true;
         tracing::info!("ServiceOrchestrator started");
+        Ok(())
+    }
+
+    pub async fn start_with_acp(&self, acp_service: Arc<AcpService>) -> Result<()> {
+        if self.config.enable_agents {
+            self.init_default_agents().await?;
+        }
+
+        if self.config.enable_channels {
+            if let Some(ref channel_configs) = self.config.channel_configs {
+                register_channels_from_config(&self.channel_service.factory, channel_configs).await;
+            } else {
+                tracing::warn!("No channel configs provided, channels will not be registered");
+            }
+
+            let handler = create_channel_handler_with_acp(
+                Arc::new(OrchestratorMessageProcessor {
+                    orchestrator: Arc::new(self.clone()),
+                }),
+                acp_service,
+            );
+            self.channel_service
+                .manager
+                .read()
+                .await
+                .add_handler(handler)
+                .await;
+
+            self.channel_service
+                .manager
+                .read()
+                .await
+                .start_all()
+                .await?;
+        }
+
+        *self.running.write().await = true;
+        tracing::info!("ServiceOrchestrator started with ACP enabled");
         Ok(())
     }
 
@@ -434,6 +504,18 @@ impl ServiceOrchestrator {
         {
             let mut device = self.device_manager.write().await;
             *device = device_manager.clone();
+        }
+
+        {
+            let mut evolution = self.evolution_engine.write().await;
+            if evolution.is_none() && self.config.enable_evolution {
+                let registry = openclaw_agent::evo::registry::SharedSkillRegistry::new();
+                let model = self.config.evolution_model.clone().unwrap_or_else(|| "gpt-4".to_string());
+                let engine = openclaw_agent::EvolutionEngine::new()
+                    .with_model(model)
+                    .with_ai_provider(ai_provider.clone());
+                *evolution = Some(Arc::new(engine));
+            }
         }
 
         let agents: Vec<Arc<dyn Agent>> = {
@@ -690,8 +772,26 @@ impl ServiceOrchestrator {
             }
         }
 
-        let result = agent.process(task).await?;
+        let result = agent.process(task.clone()).await?;
 
+        if result.status == openclaw_agent::task::TaskStatus::Failed {
+            if let Some(ref error) = result.error {
+                if self.should_try_evolution(error) {
+                    if let Some(evo_result) = self.try_evolution(agent_id, &task).await {
+                        if evo_result {
+                            tracing::info!("Evolution successful, retrying task");
+                            let retry_result = agent.process(task).await?;
+                            return self.extract_output(retry_result).await;
+                        }
+                    }
+                }
+            }
+        }
+
+        self.extract_output(result).await
+    }
+
+    async fn extract_output(&self, result: openclaw_agent::TaskResult) -> Result<String> {
         let output = match result.output {
             Some(TaskOutput::Message { message }) => message
                 .content
@@ -707,6 +807,49 @@ impl ServiceOrchestrator {
         };
 
         Ok(output)
+    }
+
+    fn should_try_evolution(&self, error: &str) -> bool {
+        if !self.config.enable_evolution {
+            return false;
+        }
+
+        error.contains("tool")
+            || error.contains("not found")
+            || error.contains("cannot")
+            || error.contains("unknown")
+    }
+
+    async fn try_evolution(&self, agent_id: &str, task: &openclaw_agent::TaskRequest) -> Option<bool> {
+        use openclaw_agent::evo::registry::DynamicSkill;
+
+        let engine_guard = self.evolution_engine.read().await;
+        let engine = engine_guard.as_ref()?;
+        let registry_guard = self.shared_skill_registry.read().await;
+        let registry = registry_guard.as_ref()?;
+
+        let context = format!("Task: {:?}, Error: {:?}", task.task_type, task.input);
+
+        let result = engine.evolve(&context).await;
+
+        if result.status == openclaw_agent::EvolutionStatus::Completed {
+            let skill_code = result.skill.as_ref()?.code.clone();
+            let skill_lang = format!("{:?}", result.skill.as_ref()?.language);
+
+            let dynamic_skill = DynamicSkill::new(
+                uuid::Uuid::new_v4().to_string(),
+                "generated_skill".to_string(),
+                skill_code,
+                skill_lang,
+                agent_id.to_string(),
+            );
+
+            registry.register_skill(dynamic_skill).await;
+            tracing::info!("Evolution: registered new skill");
+            return Some(true);
+        }
+
+        Some(false)
     }
 
     pub async fn process_channel_message(

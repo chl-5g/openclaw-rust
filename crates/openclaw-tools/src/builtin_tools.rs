@@ -1,15 +1,40 @@
 use async_trait::async_trait;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::tool_registry::Tool;
 use crate::ToolRegistry;
 
 #[derive(Clone)]
-pub struct FileOpsTool;
+pub struct FileOpsTool {
+    allowed_paths: Vec<PathBuf>,
+}
 
 impl FileOpsTool {
     pub fn new() -> Self {
-        Self
+        Self {
+            allowed_paths: vec![],
+        }
+    }
+
+    pub fn with_allowed_paths(paths: Vec<PathBuf>) -> Self {
+        Self {
+            allowed_paths: paths,
+        }
+    }
+
+    fn is_path_allowed(&self, path: &str) -> bool {
+        if self.allowed_paths.is_empty() {
+            return true;
+        }
+        
+        let requested_path = PathBuf::from(path);
+        for allowed in &self.allowed_paths {
+            if requested_path.starts_with(allowed) {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -27,6 +52,10 @@ impl Tool for FileOpsTool {
         &self,
         args: serde_json::Value,
     ) -> openclaw_core::Result<serde_json::Value> {
+        if !self.allowed_paths.is_empty() {
+            tracing::info!("FileOpsTool: Running with path restrictions enabled");
+        }
+        
         let operation = args["operation"]
             .as_str()
             .ok_or_else(|| openclaw_core::OpenClawError::Tool("Missing operation".into()))?;
@@ -34,6 +63,13 @@ impl Tool for FileOpsTool {
         match operation {
             "read" => {
                 let path = args["path"].as_str().unwrap_or("");
+                if !self.is_path_allowed(path) {
+                    tracing::warn!("FileOpsTool: Path not allowed: {}", path);
+                    return Err(openclaw_core::OpenClawError::Tool(
+                        format!("Path not allowed: {}", path)
+                    ));
+                }
+                tracing::debug!("FileOpsTool: Reading file: {}", path);
                 let content = tokio::fs::read_to_string(path).await
                     .map_err(|e| openclaw_core::OpenClawError::Io(e))?;
                 Ok(serde_json::json!({ "content": content }))
@@ -41,17 +77,37 @@ impl Tool for FileOpsTool {
             "write" => {
                 let path = args["path"].as_str().unwrap_or("");
                 let content = args["content"].as_str().unwrap_or("");
+                if !self.is_path_allowed(path) {
+                    tracing::warn!("FileOpsTool: Path not allowed: {}", path);
+                    return Err(openclaw_core::OpenClawError::Tool(
+                        format!("Path not allowed: {}", path)
+                    ));
+                }
+                tracing::debug!("FileOpsTool: Writing file: {}", path);
                 tokio::fs::write(path, content).await
                     .map_err(|e| openclaw_core::OpenClawError::Io(e))?;
                 Ok(serde_json::json!({ "status": "success", "path": path }))
             }
             "exists" => {
                 let path = args["path"].as_str().unwrap_or("");
+                if !self.is_path_allowed(path) {
+                    tracing::warn!("FileOpsTool: Path not allowed: {}", path);
+                    return Err(openclaw_core::OpenClawError::Tool(
+                        format!("Path not allowed: {}", path)
+                    ));
+                }
                 let exists = tokio::fs::metadata(path).await.is_ok();
                 Ok(serde_json::json!({ "exists": exists }))
             }
             "list" => {
                 let path = args["path"].as_str().unwrap_or(".");
+                if !self.is_path_allowed(path) {
+                    tracing::warn!("FileOpsTool: Path not allowed: {}", path);
+                    return Err(openclaw_core::OpenClawError::Tool(
+                        format!("Path not allowed: {}", path)
+                    ));
+                }
+                tracing::debug!("FileOpsTool: Listing directory: {}", path);
                 let mut entries = tokio::fs::read_dir(path).await
                     .map_err(|e| openclaw_core::OpenClawError::Io(e))?;
                 let mut files = Vec::new();
@@ -102,6 +158,8 @@ impl Tool for WebSearchTool {
         &self,
         args: serde_json::Value,
     ) -> openclaw_core::Result<serde_json::Value> {
+        tracing::warn!("WebSearchTool is in stub mode - returning mock data");
+        
         let query = args["query"]
             .as_str()
             .ok_or_else(|| openclaw_core::OpenClawError::Tool("Missing query".into()))?;

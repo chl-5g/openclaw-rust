@@ -262,12 +262,17 @@ impl DevicePort for DevicePortAdapter {
     }
 
     async fn capture_camera(&self, camera_id: &str, path: &str) -> OpenClawResult<String> {
-        let _result = self
+        let result = self
             .manager
             .capture_camera(camera_id)
             .await
             .map_err(|e| OpenClawError::Config(e.to_string()))?;
-        Ok(path.to_string())
+        
+        if result.success {
+            Ok(result.data.unwrap_or_else(|| path.to_string()))
+        } else {
+            Err(OpenClawError::Config(result.error.unwrap_or_else(|| "Capture failed".to_string())))
+        }
     }
 
     async fn list_screens(&self) -> OpenClawResult<Vec<ScreenInfo>> {
@@ -286,12 +291,17 @@ impl DevicePort for DevicePortAdapter {
     }
 
     async fn capture_screen(&self, screen_id: &str, path: &str) -> OpenClawResult<String> {
-        let _result = self
+        let result = self
             .manager
             .capture_screen(screen_id)
             .await
             .map_err(|e| OpenClawError::Config(e.to_string()))?;
-        Ok(path.to_string())
+        
+        if result.success {
+            Ok(result.data.unwrap_or_else(|| path.to_string()))
+        } else {
+            Err(OpenClawError::Config(result.error.unwrap_or_else(|| "Capture failed".to_string())))
+        }
     }
 
     async fn get_location(&self) -> OpenClawResult<LocationInfo> {

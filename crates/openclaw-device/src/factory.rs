@@ -93,6 +93,7 @@ mod tests {
 
     #[test]
     fn test_list_factories() {
+        init_default_factory();
         let factories = list_factories();
         assert!(!factories.is_empty());
     }

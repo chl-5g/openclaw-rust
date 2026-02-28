@@ -6,13 +6,14 @@ use tracing::{debug, info, warn};
 
 use openclaw_security::{GrantResult, NetworkDecision, SecurityMiddleware};
 
+use crate::docker::DockerClient;
 use crate::executor::{ExecutionContext, SecureToolExecutor};
 use crate::capability::MemoryCapabilityService;
 use crate::credential::MemoryCredentialService;
 use crate::rate_limit::MemoryRateLimiter;
 use crate::leak_detector::RegexLeakDetector;
 use crate::endpoint::MemoryEndpointAllowlist;
-use crate::types::ExecutionResult;
+use crate::types::{ExecutionResult, SandboxConfig, ResourceLimits, NetworkMode};
 use crate::wasm::{WasmExecutionInput, WasmToolModule, WasmToolRuntime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -84,6 +85,7 @@ impl std::error::Error for SandboxError {}
 pub struct SandboxManager {
     security: SecurityMiddleware,
     tool_configs: Arc<RwLock<HashMap<String, ToolSandboxConfig>>>,
+    docker_client: Arc<RwLock<Option<DockerClient>>>,
     wasm_runtime: Arc<RwLock<Option<WasmToolRuntime>>>,
     wasm_modules: Arc<RwLock<HashMap<String, WasmToolModule>>>,
     native_tools: Arc<RwLock<HashMap<String, Box<dyn NativeTool>>>>,
@@ -127,10 +129,26 @@ impl SandboxManager {
         Self {
             security: SecurityMiddleware::new(),
             tool_configs: Arc::new(RwLock::new(HashMap::new())),
+            docker_client: Arc::new(RwLock::new(None)),
             wasm_runtime: Arc::new(RwLock::new(None)),
             wasm_modules: Arc::new(RwLock::new(HashMap::new())),
             native_tools: Arc::new(RwLock::new(HashMap::new())),
             secure_executor,
+        }
+    }
+
+    pub async fn init_docker(&self) -> Result<(), String> {
+        match DockerClient::new().await {
+            Ok(client) => {
+                let mut docker = self.docker_client.write().await;
+                *docker = Some(client);
+                tracing::info!("Docker client initialized successfully");
+                Ok(())
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize Docker client: {}", e);
+                Err(e.to_string())
+            }
         }
     }
 
@@ -321,18 +339,81 @@ impl SandboxManager {
         tool_id: &str,
         input: &str,
     ) -> Result<ExecutionResult, SandboxError> {
-        debug!("Executing tool {} in Docker sandbox", tool_id);
+        let docker = self.docker_client.read().await;
+        
+        if let Some(ref client) = *docker {
+            debug!("Executing tool {} in real Docker sandbox", tool_id);
 
-        let start = std::time::Instant::now();
+            let config = self.tool_configs.read().await;
+            let tool_config = config.get(tool_id);
+            
+            let timeout = tool_config.map(|c| c.timeout_secs).unwrap_or(60);
+            let memory_bytes = tool_config.map(|c| c.memory_limit_mb as u64 * 1024 * 1024).unwrap_or(512 * 1024 * 1024);
+            
+            let sandbox_config = SandboxConfig {
+                image: "openclaw/tool-executor:latest".to_string(),
+                name: Some(format!("tool-{}", tool_id)),
+                cmd: vec!["/bin/sh".to_string(), "-c".to_string(), input.to_string()],
+                env: HashMap::new(),
+                mounts: vec![],
+                resources: ResourceLimits {
+                    cpu_cores: Some(1.0),
+                    memory_bytes: Some(memory_bytes),
+                    memory_swap_bytes: None,
+                    disk_bytes: None,
+                    pids_limit: None,
+                },
+                network: if tool_config.map(|c| c.allow_network).unwrap_or(true) {
+                    NetworkMode::Bridge
+                } else {
+                    NetworkMode::None
+                },
+                timeout_secs: timeout,
+                auto_remove: true,
+                work_dir: None,
+                security: crate::types::SecurityConfig::default(),
+            };
 
-        Ok(ExecutionResult {
-            exit_code: 0,
-            stdout: format!("[Docker] Executed: {}", input),
-            stderr: String::new(),
-            timed_out: false,
-            duration_secs: start.elapsed().as_secs_f64(),
-            resource_usage: None,
-        })
+            let sandbox_id = client.create_sandbox(sandbox_config)
+                .await
+                .map_err(|e| SandboxError::DockerError(e.to_string()))?;
+            
+            client.start_sandbox(&sandbox_id)
+                .await
+                .map_err(|e| SandboxError::DockerError(e.to_string()))?;
+            
+            let exit_code = client.wait_sandbox(&sandbox_id)
+                .await
+                .map_err(|e| SandboxError::DockerError(e.to_string()))?;
+            
+            let (stdout, stderr) = client.get_logs(&sandbox_id)
+                .await
+                .map_err(|e| SandboxError::DockerError(e.to_string()))?;
+            
+            client.remove_sandbox(&sandbox_id)
+                .await
+                .map_err(|e| SandboxError::DockerError(e.to_string()))?;
+
+            Ok(ExecutionResult {
+                exit_code,
+                stdout,
+                stderr,
+                timed_out: false,
+                duration_secs: 0.0,
+                resource_usage: None,
+            })
+        } else {
+            tracing::warn!("Docker client not initialized - tool '{}' execution simulated", tool_id);
+            let start = std::time::Instant::now();
+            Ok(ExecutionResult {
+                exit_code: 0,
+                stdout: format!("[Docker] Executed: {}", input),
+                stderr: String::new(),
+                timed_out: false,
+                duration_secs: start.elapsed().as_secs_f64(),
+                resource_usage: None,
+            })
+        }
     }
 
     async fn execute_wasm(

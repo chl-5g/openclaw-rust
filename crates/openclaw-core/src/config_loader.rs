@@ -157,6 +157,10 @@ pub struct FeaturesSection {
     pub sandbox: bool,
     #[serde(default)]
     pub agentic_rag: bool,
+    #[serde(default)]
+    pub evolution: bool,
+    #[serde(default)]
+    pub evolution_model: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -305,6 +309,8 @@ impl UnifiedConfig {
             enable_voice: self.voice.enabled,
             enable_canvas: false,
             enable_agentic_rag: self.features.agentic_rag,
+            enable_evolution: self.features.evolution,
+            evolution_model: self.features.evolution_model.clone(),
         };
 
         let security_config = crate::config::SecurityConfig {

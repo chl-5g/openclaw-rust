@@ -58,5 +58,5 @@ pub use base::{Channel, ChannelEvent, ChannelHandler};
 pub use config::ChannelConfigs;
 pub use factory::ChannelFactoryRegistry;
 pub use manager::ChannelManager;
-pub use registry::register_default_channels;
+pub use registry::{register_default_channels, register_channels_from_config};
 pub use types::{ChannelMessage, ChannelType, SendMessage};

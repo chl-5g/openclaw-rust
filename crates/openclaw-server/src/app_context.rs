@@ -15,6 +15,7 @@ use crate::device_manager::DeviceManager;
 use crate::orchestrator::ServiceOrchestrator;
 use crate::vector_store_registry::VectorStoreRegistry;
 use crate::voice_service::VoiceService;
+use crate::acp_service::AcpService;
 
 #[derive(Clone)]
 pub struct AppContext {
@@ -29,6 +30,7 @@ pub struct AppContext {
     pub unified_device_manager: Option<Arc<UnifiedDeviceManager>>,
     pub voice_service: Arc<VoiceService>,
     pub vector_store_registry: Arc<VectorStoreRegistry>,
+    pub acp_service: Option<Arc<AcpService>>,
 }
 
 impl AppContext {
@@ -44,6 +46,7 @@ impl AppContext {
         unified_device_manager: Option<Arc<UnifiedDeviceManager>>,
         voice_service: Arc<VoiceService>,
         vector_store_registry: Arc<VectorStoreRegistry>,
+        acp_service: Option<Arc<AcpService>>,
     ) -> Self {
         Self {
             config,
@@ -57,6 +60,7 @@ impl AppContext {
             unified_device_manager,
             voice_service,
             vector_store_registry,
+            acp_service,
         }
     }
 

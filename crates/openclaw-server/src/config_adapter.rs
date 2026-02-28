@@ -43,9 +43,11 @@ impl ConfigAdapter {
         });
 
         MemoryConfig {
+            backend_type: core.backend_type.clone(),
             short_term: ShortTermMemoryConfig {
                 compress_after: core.short_term.compress_after,
                 max_summaries: core.short_term.max_summaries,
+                compression_mode: core.short_term.compression_mode.clone(),
             },
             long_term: LongTermMemoryConfig {
                 enabled: core.long_term.enabled,

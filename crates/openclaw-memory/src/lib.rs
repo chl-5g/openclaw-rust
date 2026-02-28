@@ -12,6 +12,7 @@ pub mod checkpoint;
 pub mod checkpoint_store;
 pub mod chunk;
 pub mod compressor;
+pub mod compress_adapter;
 pub mod config;
 pub mod conflict_resolver;
 pub mod embedding;

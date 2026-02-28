@@ -140,6 +140,9 @@ impl MemoryItem {
 /// 记忆配置
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryConfig {
+    /// 记忆后端类型: "hybrid" | "simple" | "vector"
+    #[serde(default = "default_backend_type")]
+    pub backend_type: String,
     /// 工作记忆配置
     pub working: WorkingMemoryConfig,
     /// 短期记忆配置
@@ -149,6 +152,10 @@ pub struct MemoryConfig {
     /// 嵌入向量维度 (可选，未设置时从 embedding provider 获取或使用默认值)
     #[serde(default)]
     pub embedding_dimensions: Option<usize>,
+}
+
+fn default_backend_type() -> String {
+    "hybrid".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,6 +181,13 @@ pub struct ShortTermMemoryConfig {
     pub compress_after: usize,
     /// 最大摘要数
     pub max_summaries: usize,
+    /// 压缩模式: "simple" | "ai"
+    #[serde(default = "default_compression_mode")]
+    pub compression_mode: String,
+}
+
+fn default_compression_mode() -> String {
+    "simple".to_string()
 }
 
 impl Default for ShortTermMemoryConfig {
@@ -181,6 +195,7 @@ impl Default for ShortTermMemoryConfig {
         Self {
             compress_after: 10,
             max_summaries: 5,
+            compression_mode: "simple".to_string(),
         }
     }
 }

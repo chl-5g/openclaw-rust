@@ -7,11 +7,12 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use openclaw_core::Result;
-use crate::server_config::ServerConfig;
+use crate::server_config::{ServerConfig, AcpConfig};
 
 use crate::adapters::{AIProviderAdapter, SecurityPipelineAdapter, ToolRegistryAdapter};
 use crate::ports::DevicePortAdapter;
 use crate::api::create_router;
+use crate::agentic_rag_api::init_agentic_rag_engine;
 use crate::app_context::AppContext;
 use crate::config_adapter::ConfigAdapter;
 use crate::service_factory::{DefaultServiceFactory, ServiceFactory};
@@ -76,7 +77,17 @@ impl Gateway {
         }
 
         if let Some(ref orchestrator) = *self.context.orchestrator.read().await {
-            orchestrator.start().await?;
+            if self.config.acp.enabled {
+                let acp_service = self.factory.create_acp_service(&self.config.acp).await?;
+                if let Some(acp_service) = acp_service {
+                    tracing::info!("Starting ServiceOrchestrator with ACP enabled");
+                    orchestrator.start_with_acp(acp_service).await?;
+                } else {
+                    orchestrator.start().await?;
+                }
+            } else {
+                orchestrator.start().await?;
+            }
 
             if !self.config.agents.list.is_empty() {
                 orchestrator.init_agents_from_config(&self.config).await?;
@@ -114,8 +125,9 @@ impl Gateway {
                     )
                     .await?;
                 orchestrator
-                    .set_agentic_rag_engine(agentic_rag_engine)
+                    .set_agentic_rag_engine(agentic_rag_engine.clone())
                     .await;
+                init_agentic_rag_engine(agentic_rag_engine);
                 tracing::info!("Agentic RAG engine initialized");
             }
 

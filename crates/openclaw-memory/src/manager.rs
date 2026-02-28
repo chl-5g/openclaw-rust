@@ -64,6 +64,15 @@ impl MemoryManager {
         self
     }
 
+    /// 设置 AI 压缩提供商
+    pub fn with_ai_compressor(
+        mut self,
+        provider: Arc<dyn crate::compressor::AICompressProvider>,
+    ) -> Self {
+        self.compressor.set_ai_provider(provider);
+        self
+    }
+
     /// 设置混合搜索管理器
     pub fn with_hybrid_search(mut self, search: Arc<HybridSearchManager>) -> Self {
         self.hybrid_search = Some(search);
@@ -435,6 +444,12 @@ impl MemoryManager {
         let text = content.trim().to_string();
         if text.is_empty() {
             return None;
+        }
+
+        static WARNED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if WARNED.get().is_none() {
+            tracing::warn!("Vector embedding placeholder used - vector dimension hardcoded to 384 with zero values");
+            let _ = WARNED.set(true);
         }
 
         Some(openclaw_vector::VectorItem {

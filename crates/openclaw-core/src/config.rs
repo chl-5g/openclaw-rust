@@ -64,6 +64,10 @@ pub struct ServerConfig {
     pub enable_canvas: bool,
     #[serde(default)]
     pub enable_agentic_rag: bool,
+    #[serde(default)]
+    pub enable_evolution: bool,
+    #[serde(default)]
+    pub evolution_model: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -77,6 +81,8 @@ impl Default for ServerConfig {
             enable_voice: false,
             enable_canvas: false,
             enable_agentic_rag: false,
+            enable_evolution: false,
+            evolution_model: None,
         }
     }
 }
@@ -215,14 +221,28 @@ impl Default for TokenBudget {
 }
 
 /// 记忆配置
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryConfig {
+    /// 记忆后端类型: "hybrid" | "simple" | "vector"
+    #[serde(default)]
+    pub backend_type: String,
     /// 工作记忆配置
     pub working: WorkingMemoryConfig,
     /// 短期记忆配置
     pub short_term: ShortTermMemoryConfig,
     /// 长期记忆配置
     pub long_term: LongTermMemoryConfig,
+}
+
+impl Default for MemoryConfig {
+    fn default() -> Self {
+        Self {
+            backend_type: "hybrid".to_string(),
+            working: WorkingMemoryConfig::default(),
+            short_term: ShortTermMemoryConfig::default(),
+            long_term: LongTermMemoryConfig::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,6 +268,9 @@ pub struct ShortTermMemoryConfig {
     pub compress_after: usize,
     /// 最大摘要数
     pub max_summaries: usize,
+    /// 压缩模式: "simple" | "ai"
+    #[serde(default)]
+    pub compression_mode: String,
 }
 
 impl Default for ShortTermMemoryConfig {
@@ -255,6 +278,7 @@ impl Default for ShortTermMemoryConfig {
         Self {
             compress_after: 10,
             max_summaries: 5,
+            compression_mode: "simple".to_string(),
         }
     }
 }

@@ -2,23 +2,55 @@
 
 use crate::types::{MemoryItem, ShortTermMemoryConfig};
 use openclaw_core::{Message, OpenClawError, Result};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// 记忆压缩器
 #[derive(Clone)]
 pub struct MemoryCompressor {
     config: ShortTermMemoryConfig,
+    ai_provider: Arc<RwLock<Option<Arc<dyn AICompressProvider>>>>,
 }
 
 impl MemoryCompressor {
     pub fn new(config: ShortTermMemoryConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            ai_provider: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// 设置 AI 压缩提供商 (异步版本)
+    pub async fn set_ai_provider(&self, provider: Arc<dyn AICompressProvider>) {
+        let mut guard = self.ai_provider.write().await;
+        *guard = Some(provider);
     }
 
     /// 压缩消息列表为摘要
     ///
-    /// 注意：实际的摘要生成需要调用 AI API
-    /// 这里提供的是一个简单的占位符实现
+    /// 根据配置决定使用 AI 还是 simple 模式
     pub async fn compress(&self, items: Vec<MemoryItem>) -> Result<MemoryItem> {
+        if items.is_empty() {
+            return Err(OpenClawError::Memory("无法压缩空消息列表".to_string()));
+        }
+
+        // 根据配置选择压缩模式
+        match self.config.compression_mode.as_str() {
+            "ai" => {
+                let guard = self.ai_provider.read().await;
+                if let Some(provider) = guard.as_ref() {
+                    self.compress_with_ai(items, provider.as_ref()).await
+                } else {
+                    tracing::warn!("AI compression mode enabled but no provider set, falling back to simple");
+                    self.compress_simple(items).await
+                }
+            }
+            _ => self.compress_simple(items).await,
+        }
+    }
+
+    /// 简单压缩模式 (默认)
+    async fn compress_simple(&self, items: Vec<MemoryItem>) -> Result<MemoryItem> {
         if items.is_empty() {
             return Err(OpenClawError::Memory("无法压缩空消息列表".to_string()));
         }
@@ -70,26 +102,8 @@ impl MemoryCompressor {
     pub fn should_compress(&self, message_count: usize) -> bool {
         message_count >= self.config.compress_after
     }
-}
 
-impl Default for MemoryCompressor {
-    fn default() -> Self {
-        Self::new(ShortTermMemoryConfig::default())
-    }
-}
-
-/// AI 驱动的压缩器 (需要 AI 提供商)
-#[allow(dead_code)]
-pub struct AICompressor {
-    config: ShortTermMemoryConfig,
-}
-
-impl AICompressor {
-    pub fn new(config: ShortTermMemoryConfig) -> Self {
-        Self { config }
-    }
-
-    /// 使用 AI 生成智能摘要
+    /// 使用 AI 生成智能摘要 (需要 AI 提供商)
     pub async fn compress_with_ai(
         &self,
         items: Vec<MemoryItem>,
@@ -120,6 +134,12 @@ impl AICompressor {
             messages.len(),
             summary_tokens,
         ))
+    }
+}
+
+impl Default for MemoryCompressor {
+    fn default() -> Self {
+        Self::new(ShortTermMemoryConfig::default())
     }
 }
 

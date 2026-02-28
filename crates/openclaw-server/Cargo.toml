@@ -23,6 +23,7 @@ openclaw-acp.workspace = true
 openclaw-sandbox = { workspace = true, features = ["full-security"] }
 reqwest = { workspace = true }
 regex.workspace = true
+once_cell.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 async-trait.workspace = true

@@ -2,8 +2,25 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use openclaw_channels::{ChannelEvent, ChannelHandler, SendMessage};
 use openclaw_core::{Result, OpenClawError};
+use once_cell::sync::Lazy;
 
 use crate::acp_service::AcpService;
+
+static FEISHU_MENTION_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"@([\w\u4e00-\u9fa5]+)").expect("Invalid regex: feishu mention")
+});
+
+static DISCORD_MENTION_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"<@!?(\d+)>").expect("Invalid regex: discord mention")
+});
+
+static FEISHU_CLEAN_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"@[\w\u4e00-\u9fa5]+").expect("Invalid regex: feishu clean")
+});
+
+static DISCORD_CLEAN_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(r"<@!?\d+>").expect("Invalid regex: discord clean")
+});
 
 pub struct ChannelMessageHandler {
     processor: Arc<dyn ChannelMessageProcessor>,
@@ -26,15 +43,13 @@ impl ChannelMessageHandler {
     fn parse_mentions(&self, content: &str) -> Vec<String> {
         let mut mentions = Vec::new();
         
-        let feishu_pattern = regex::Regex::new(r"@([\w\u4e00-\u9fa5]+)").unwrap();
-        for cap in feishu_pattern.captures_iter(content) {
+        for cap in FEISHU_MENTION_PATTERN.captures_iter(content) {
             if let Some(name) = cap.get(1) {
                 mentions.push(name.as_str().to_string());
             }
         }
 
-        let discord_pattern = regex::Regex::new(r"<@!?(\d+)>").unwrap();
-        for _ in discord_pattern.captures_iter(content) {
+        for _ in DISCORD_MENTION_PATTERN.captures_iter(content) {
             mentions.push("discord_mention".to_string());
         }
 
@@ -44,11 +59,9 @@ impl ChannelMessageHandler {
     fn clean_content(&self, content: &str) -> String {
         let mut cleaned = content.to_string();
         
-        let feishu_pattern = regex::Regex::new(r"@[\w\u4e00-\u9fa5]+").unwrap();
-        cleaned = feishu_pattern.replace_all(&cleaned, "").to_string();
+        cleaned = FEISHU_CLEAN_PATTERN.replace_all(&cleaned, "").to_string();
         
-        let discord_pattern = regex::Regex::new(r"<@!?\d+>").unwrap();
-        cleaned = discord_pattern.replace_all(&cleaned, "").to_string();
+        cleaned = DISCORD_CLEAN_PATTERN.replace_all(&cleaned, "").to_string();
         
         cleaned.trim().to_string()
     }

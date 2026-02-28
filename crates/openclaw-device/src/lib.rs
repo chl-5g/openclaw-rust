@@ -206,6 +206,15 @@ pub async fn init_device(print_info: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub async fn get_or_init_device(print_on_init: bool) -> anyhow::Result<Arc<registry::DeviceRegistry>> {
+    if let Some(registry) = DEVICE_REGISTRY.get() {
+        return Ok(registry.clone());
+    }
+    
+    init_device(print_on_init).await?;
+    Ok(DEVICE_REGISTRY.get().unwrap().clone())
+}
+
 pub fn get_device_registry() -> Option<Arc<registry::DeviceRegistry>> {
     DEVICE_REGISTRY.get().cloned()
 }

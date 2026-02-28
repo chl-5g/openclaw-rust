@@ -21,7 +21,7 @@ pub type AcpResult<T> = std::result::Result<T, OpenClawError>;
 pub struct AcpService {
     agent_registry: Arc<AgentRegistry>,
     context_manager: Arc<ContextManager>,
-    router: Arc<Router>,
+    router: Arc<std::sync::RwLock<Router>>,
     capability_registry: Arc<CapabilityRegistry>,
     local_agents: Arc<RwLock<HashMap<String, LocalAgentHandle>>>,
     http_clients: Arc<RwLock<HashMap<String, reqwest::Client>>>,
@@ -38,10 +38,10 @@ impl AcpService {
     pub fn new() -> Self {
         let agent_registry = Arc::new(AgentRegistry::new());
         let context_manager = Arc::new(ContextManager::new());
-        let router = Arc::new(Router::new(
+        let router = Arc::new(std::sync::RwLock::new(Router::new(
             Arc::clone(&agent_registry),
             Arc::clone(&context_manager),
-        ));
+        )));
         let capability_registry = Arc::new(CapabilityRegistry::new());
 
         Self {
@@ -56,10 +56,10 @@ impl AcpService {
 
     pub fn with_default_agent(mut self, agent_id: impl Into<String>) -> Self {
         let agent_id = agent_id.into();
-        self.router = Arc::new(Router::new(
+        self.router = Arc::new(std::sync::RwLock::new(Router::new(
             Arc::clone(&self.agent_registry),
             Arc::clone(&self.context_manager),
-        ).with_default_agent(agent_id));
+        ).with_default_agent(agent_id)));
         self
     }
 
@@ -114,7 +114,8 @@ impl AcpService {
     }
 
     pub async fn route_message(&self, content: &str, conversation_id: &str) -> RouterResult {
-        let result = self.router.route(content, conversation_id).await;
+        let router = self.router.read().unwrap().clone();
+        let result = router.route(content, conversation_id).await;
         
         RouterResult {
             target_agent: result.target_agent,
@@ -223,8 +224,13 @@ impl AcpService {
         Arc::clone(&self.context_manager)
     }
 
-    pub fn router(&self) -> Arc<Router> {
+    pub fn router(&self) -> Arc<std::sync::RwLock<Router>> {
         Arc::clone(&self.router)
+    }
+
+    pub fn add_route_rule(&self, pattern: impl Into<String>, target_agent: impl Into<String>, priority: i32) -> Result<(), regex::Error> {
+        let mut router = self.router.write().unwrap();
+        router.add_rule(pattern, target_agent, priority)
     }
 
     pub fn capability_registry(&self) -> Arc<CapabilityRegistry> {

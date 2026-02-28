@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use openclaw_agent::ports::{
-    AIPort, MemoryEntry, MemoryPort, RecallItem, SecurityCheckResult, SecurityPort,
+    AIPort, MemoryPort, SecurityCheckResult, SecurityPort,
     ToolInfo, ToolPort,
 };
 use openclaw_ai::{
@@ -87,73 +87,6 @@ impl AIPort for AIProviderAdapter {
 
         let response = self.provider.embed(request).await?;
         Ok(response.embeddings)
-    }
-}
-
-pub struct MemoryManagerAdapter {
-    manager: Arc<MemoryManager>,
-}
-
-impl MemoryManagerAdapter {
-    pub fn new(manager: Arc<MemoryManager>) -> Self {
-        Self { manager }
-    }
-}
-
-#[async_trait]
-impl MemoryPort for MemoryManagerAdapter {
-    async fn add(&self, _entry: MemoryEntry) -> OpenClawResult<()> {
-        Ok(())
-    }
-
-    async fn retrieve(&self, query: &str, limit: usize) -> OpenClawResult<Vec<MemoryEntry>> {
-        let retrieval = self.manager.retrieve(query, limit).await?;
-
-        Ok(retrieval
-            .items
-            .into_iter()
-            .map(|item| MemoryEntry {
-                id: item.id.to_string(),
-                content: serde_json::to_string(&item.content).unwrap_or_default(),
-                metadata: std::collections::HashMap::new(),
-            })
-            .collect())
-    }
-
-    async fn recall(&self, context: &str, limit: usize) -> OpenClawResult<Vec<RecallItem>> {
-        let result = self.manager.recall(context).await?;
-
-        Ok(result
-            .items
-            .into_iter()
-            .take(limit)
-            .map(|item| RecallItem {
-                entry: MemoryEntry {
-                    id: item.id.to_string(),
-                    content: serde_json::to_string(&item.content).unwrap_or_default(),
-                    metadata: std::collections::HashMap::new(),
-                },
-                score: item.similarity,
-            })
-            .collect())
-    }
-
-    async fn get_context(&self) -> OpenClawResult<Vec<Message>> {
-        let retrieval = self.manager.retrieve("", 4096).await?;
-
-        Ok(retrieval
-            .items
-            .into_iter()
-            .map(|item| Message {
-                id: item.id,
-                role: openclaw_core::Role::User,
-                content: vec![openclaw_core::Content::Text {
-                    text: serde_json::to_string(&item.content).unwrap_or_default(),
-                }],
-                created_at: item.created_at,
-                metadata: Default::default(),
-            })
-            .collect())
     }
 }
 

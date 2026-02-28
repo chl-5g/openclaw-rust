@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::warn;
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SensitiveType {
@@ -44,6 +45,76 @@ pub struct OutputValidation {
     pub requires_action: bool,
 }
 
+static DEFAULT_PATTERNS: Lazy<Vec<(Regex, SensitiveType, ValidationLevel)>> = Lazy::new(|| {
+    vec![
+        (
+            Regex::new(r"sk-[a-zA-Z0-9]{20,}").expect("Invalid regex: API key"),
+            SensitiveType::ApiKey,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"(?i)apikey.*[=:].{20,}").expect("Invalid regex: apikey"),
+            SensitiveType::ApiKey,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"(?i)password.*[=:].{8,}").expect("Invalid regex: password"),
+            SensitiveType::Password,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"bearer [a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").expect("Invalid regex: bearer token"),
+            SensitiveType::Token,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"-----BEGIN.+PRIVATE KEY-----").expect("Invalid regex: private key"),
+            SensitiveType::PrivateKey,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}").expect("Invalid regex: credit card"),
+            SensitiveType::CreditCard,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"\d{3}-\d{2}-\d{4}").expect("Invalid regex: SSN"),
+            SensitiveType::Ssn,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"1[3-9]\d{9}").expect("Invalid regex: phone number"),
+            SensitiveType::PhoneNumber,
+            ValidationLevel::Warning,
+        ),
+        (
+            Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").expect("Invalid regex: email"),
+            SensitiveType::Email,
+            ValidationLevel::Warning,
+        ),
+        (
+            Regex::new(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}").expect("Invalid regex: IP address"),
+            SensitiveType::IpAddress,
+            ValidationLevel::Warning,
+        ),
+        (
+            Regex::new(r"(?i)(/home/|/Users/|/etc/|C:\\|D:\\)[^\s]+").expect("Invalid regex: file path"),
+            SensitiveType::FilePath,
+            ValidationLevel::Warning,
+        ),
+        (
+            Regex::new(r"(?i)secret[_-]?key.*[=:].{16,}").expect("Invalid regex: secret key"),
+            SensitiveType::ApiKey,
+            ValidationLevel::Block,
+        ),
+        (
+            Regex::new(r"(?i)access[_-]?token.*[=:].{20,}").expect("Invalid regex: access token"),
+            SensitiveType::Token,
+            ValidationLevel::Block,
+        ),
+    ]
+});
+
 pub struct OutputValidator {
     patterns: Arc<RwLock<Vec<(Regex, SensitiveType, ValidationLevel)>>>,
     custom_rules: Arc<RwLock<HashMap<String, (Regex, ValidationLevel)>>>,
@@ -58,88 +129,8 @@ impl Default for OutputValidator {
 
 impl OutputValidator {
     pub fn new() -> Self {
-        let mut patterns = Vec::new();
-
-        patterns.push((
-            Regex::new(r"sk-[a-zA-Z0-9]{20,}").unwrap(),
-            SensitiveType::ApiKey,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"(?i)apikey.*[=:].{20,}").unwrap(),
-            SensitiveType::ApiKey,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"(?i)password.*[=:].{8,}").unwrap(),
-            SensitiveType::Password,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"bearer [a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+").unwrap(),
-            SensitiveType::Token,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"-----BEGIN.+PRIVATE KEY-----").unwrap(),
-            SensitiveType::PrivateKey,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}").unwrap(),
-            SensitiveType::CreditCard,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap(),
-            SensitiveType::Ssn,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"1[3-9]\d{9}").unwrap(),
-            SensitiveType::PhoneNumber,
-            ValidationLevel::Warning,
-        ));
-
-        patterns.push((
-            Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap(),
-            SensitiveType::Email,
-            ValidationLevel::Warning,
-        ));
-
-        patterns.push((
-            Regex::new(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}").unwrap(),
-            SensitiveType::IpAddress,
-            ValidationLevel::Warning,
-        ));
-
-        patterns.push((
-            Regex::new(r"(?i)(/home/|/Users/|/etc/|C:\\|D:\\)[^\s]+").unwrap(),
-            SensitiveType::FilePath,
-            ValidationLevel::Warning,
-        ));
-
-        patterns.push((
-            Regex::new(r"(?i)secret[_-]?key.*[=:].{16,}").unwrap(),
-            SensitiveType::ApiKey,
-            ValidationLevel::Block,
-        ));
-
-        patterns.push((
-            Regex::new(r"(?i)access[_-]?token.*[=:].{20,}").unwrap(),
-            SensitiveType::Token,
-            ValidationLevel::Block,
-        ));
-
         Self {
-            patterns: Arc::new(RwLock::new(patterns)),
+            patterns: Arc::new(RwLock::new(DEFAULT_PATTERNS.clone())),
             custom_rules: Arc::new(RwLock::new(HashMap::new())),
             stats: Arc::new(RwLock::new(HashMap::new())),
         }

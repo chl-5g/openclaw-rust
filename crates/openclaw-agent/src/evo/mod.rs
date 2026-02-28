@@ -10,6 +10,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use openclaw_ai::{AIProvider, ChatRequest};
+use openclaw_core::Message;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,8 +89,7 @@ impl SkillGenerator {
 
         format!(
             r#"pub async fn {name}({params}) -> Result<{return_type}, String> {{
-    // TODO: Implement {name}
-    Ok({return_type}::default())
+    Err("Skill '{name}' not implemented - Evo evolution pending".to_string())
 }}"#,
             name = need.name,
             params = params,
@@ -186,6 +187,7 @@ impl std::error::Error for CompilerError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EvolutionStatus {
     Pending,
+    Analyzing,
     Generating,
     Compiling,
     Validating,
@@ -234,6 +236,8 @@ impl EvolutionResult {
 pub struct EvolutionEngine {
     generator: SkillGenerator,
     compiler: DynamicCompiler,
+    ai_provider: Option<Arc<dyn AIProvider>>,
+    default_model: String,
 }
 
 impl EvolutionEngine {
@@ -241,10 +245,154 @@ impl EvolutionEngine {
         Self {
             generator: SkillGenerator::new(),
             compiler: DynamicCompiler::new(ProgrammingLanguage::Wasm),
+            ai_provider: None,
+            default_model: "gpt-4".to_string(),
         }
     }
 
+    pub fn with_ai_provider(mut self, provider: Arc<dyn AIProvider>) -> Self {
+        self.ai_provider = Some(provider);
+        self
+    }
+
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.default_model = model.into();
+        self
+    }
+
     pub async fn evolve(&self, context: &str) -> EvolutionResult {
+        if let Some(ref ai) = self.ai_provider {
+            return self.ai_evolve(ai.as_ref(), context).await;
+        }
+        
+        self.fallback_evolve(context).await
+    }
+
+    async fn ai_evolve(&self, ai: &dyn AIProvider, context: &str) -> EvolutionResult {
+        let mut result = EvolutionResult::pending();
+        
+        result.logs.push("Analyzing user need with AI...".to_string());
+        result.status = EvolutionStatus::Analyzing;
+        
+        let tool_spec = match self.analyze_need_with_ai(ai, context).await {
+            Ok(spec) => spec,
+            Err(e) => {
+                result.logs.push(format!("AI analysis failed: {}", e));
+                return EvolutionResult::failure(e);
+            }
+        };
+        
+        result.logs.push(format!("Detected need: {}", tool_spec.name));
+        
+        result.logs.push("Generating code with AI...".to_string());
+        result.status = EvolutionStatus::Generating;
+        
+        let code = match self.generate_code_with_ai(ai, &tool_spec).await {
+            Ok(c) => c,
+            Err(e) => {
+                result.logs.push(format!("Code generation failed: {}", e));
+                return EvolutionResult::failure(e);
+            }
+        };
+        
+        result.logs.push("Validating code...".to_string());
+        result.status = EvolutionStatus::Validating;
+        
+        if let Err(e) = self.compiler.validate(&code).await {
+            result.logs.push(format!("Validation failed: {}", e));
+            return EvolutionResult::failure(e.to_string());
+        }
+        
+        result.logs.push("Compiling skill...".to_string());
+        result.status = EvolutionStatus::Compiling;
+        
+        match self.compiler.compile(&code).await {
+            Ok(skill) => {
+                result.logs.push(format!("Compiled: {} v{}", skill.language, skill.compiled_at.to_rfc3339()));
+                EvolutionResult::success(skill)
+            }
+            Err(e) => {
+                EvolutionResult::failure(e.to_string())
+            }
+        }
+    }
+
+    async fn analyze_need_with_ai(&self, ai: &dyn AIProvider, context: &str) -> Result<ToolNeed, String> {
+        let prompt = format!(r#"Analyze the user request and extract the tool specification needed.
+
+User request: {}
+
+Respond in JSON format:
+{{
+    "name": "tool_name_in_snake_case",
+    "description": "What this tool does",
+    "parameters": [
+        {{"name": "param_name", "param_type": "String", "required": true, "description": "Parameter description"}}
+    ],
+    "return_type": "String"
+}}"#, context);
+
+        let request = ChatRequest::new(
+            self.default_model.clone(),
+            vec![Message::user(prompt)],
+        )
+        .with_temperature(0.3)
+        .with_max_tokens(2000);
+
+        let response = ai.chat(request).await
+            .map_err(|e| e.to_string())?;
+
+        let content = response.message.text_content()
+            .ok_or("AI response is not text")?;
+
+        serde_json::from_str(content)
+            .map_err(|e| format!("Failed to parse AI response: {}", e))
+    }
+
+    async fn generate_code_with_ai(&self, ai: &dyn AIProvider, spec: &ToolNeed) -> Result<String, String> {
+        let params: String = spec.parameters.iter()
+            .map(|p| format!("{}: {}", p.name, p.param_type))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let prompt = format!(r#"Generate a Rust function for the following tool specification.
+
+Tool: {}
+Description: {}
+Parameters: {}
+Return type: {}
+
+Requirements:
+1. Use async/await
+2. Return Result<{}, String>
+3. Code must compile without errors
+4. Use appropriate HTTP client (reqwest) for API calls
+5. Return meaningful data in JSON format
+
+Respond ONLY with the code, no explanations:"#, 
+            spec.name, 
+            spec.description, 
+            params,
+            spec.return_type,
+            spec.return_type
+        );
+
+        let request = ChatRequest::new(
+            self.default_model.clone(),
+            vec![Message::user(prompt)],
+        )
+        .with_temperature(0.2)
+        .with_max_tokens(4000);
+
+        let response = ai.chat(request).await
+            .map_err(|e| e.to_string())?;
+
+        response.message.text_content()
+            .map(|s| s.trim().to_string())
+            .ok_or("AI response is not text".to_string())
+    }
+
+    async fn fallback_evolve(&self, context: &str) -> EvolutionResult {
         let mut result = EvolutionResult::pending();
         
         result.logs.push("Detecting needs...".to_string());
@@ -439,6 +587,29 @@ mod tests {
         let result = engine.evolve("I need to read files and execute commands").await;
         
         assert!(result.status == EvolutionStatus::Completed || result.status == EvolutionStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn test_evolution_engine_with_ai_provider_fallback() {
+        let engine = EvolutionEngine::new();
+        let result = engine.evolve("I need to read files").await;
+        assert!(!result.logs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_evolution_engine_builder() {
+        let engine = EvolutionEngine::new()
+            .with_model("gpt-4");
+        
+        assert_eq!(engine.evolve("test").await.status, EvolutionStatus::Failed);
+    }
+
+    #[tokio::test]
+    async fn test_fallback_evolve() {
+        let engine = EvolutionEngine::new();
+        let result = engine.evolve("I need to read files").await;
+        
+        assert!(!result.logs.is_empty());
     }
 
     #[tokio::test]
