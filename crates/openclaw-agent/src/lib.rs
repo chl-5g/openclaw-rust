@@ -56,6 +56,13 @@ pub use evo::learning_history::{LearningHistory, LearningRecord, RecurringPatter
 pub use evo::knowledge_graph::{KnowledgeGraph, SkillNode, GraphStatistics};
 pub use evo::skill_validator::{SkillValidator, ValidationResult, ValidationStatus, ValidationDetail};
 pub use evo::version_manager::{VersionManager, VersionRecord, VersionDiff};
+pub use evo::autonomous::{
+    Schedule, ScheduleManager, ScheduleType, ScheduleEvent,
+    Hand, HandRegistry, HandCategory, HandExecutor, HandMetrics,
+    Guardrail, GuardrailAction, ToolDefinition, MetricDefinition,
+    ExecutionContext, ExecutionResult, ApprovalRequest, ApprovalStatus,
+    get_preset_hands, researcher_hand, collector_hand, lead_generator_hand, predictor_hand,
+};
 pub use sub_agent::*;
 pub use task::*;
 pub use team::*;

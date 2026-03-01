@@ -14,6 +14,7 @@ use super::learning_history::{LearningHistory, LearningRecord, LearningType, Rec
 use super::pattern_analyzer::{PatternAnalyzer, TaskPattern, ToolCall};
 use super::skill_validator::{SkillValidator, ValidationResult, ValidationStatus};
 use super::version_manager::{VersionManager, VersionRecord};
+use super::autonomous;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvoConfig {
@@ -91,6 +92,10 @@ pub struct EvoV2Engine {
     skill_validator: SkillValidator,
     version_manager: Arc<RwLock<VersionManager>>,
     learned_skills: Arc<RwLock<std::collections::HashMap<String, EvoSkill>>>,
+    schedule_manager: Arc<autonomous::ScheduleManager>,
+    hand_registry: Arc<autonomous::HandRegistry>,
+    hand_executor: Arc<autonomous::HandExecutor>,
+    metrics_collector: Arc<autonomous::MetricsCollector>,
 }
 
 impl Default for EvoV2Engine {
@@ -113,6 +118,14 @@ impl EvoV2Engine {
             skill_validator: SkillValidator::new(),
             version_manager: Arc::new(RwLock::new(VersionManager::new())),
             learned_skills: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            schedule_manager: Arc::new(autonomous::ScheduleManager::new()),
+            hand_registry: Arc::new(autonomous::HandRegistry::new()),
+            hand_executor: Arc::new(autonomous::HandExecutor::new(
+                Arc::new(autonomous::HandRegistry::new()),
+                Arc::new(autonomous::ScheduleManager::new()),
+                Arc::new(autonomous::MetricsCollector::new()),
+            )),
+            metrics_collector: Arc::new(autonomous::MetricsCollector::new()),
         }
     }
 
@@ -495,6 +508,57 @@ impl EvoV2Engine {
         }
 
         Ok(())
+    }
+
+    pub async fn get_hand_list(&self) -> Vec<autonomous::Hand> {
+        self.hand_registry.list().await
+    }
+
+    pub async fn activate_hand(&self, hand_id: &str) -> bool {
+        self.hand_registry.enable(hand_id).await
+    }
+
+    pub async fn deactivate_hand(&self, hand_id: &str) -> bool {
+        self.hand_registry.disable(hand_id).await
+    }
+
+    pub async fn run_hand(&self, hand_id: &str) -> Result<serde_json::Value, String> {
+        let ctx = autonomous::ExecutionContext::new(hand_id.to_string());
+        let result = self.hand_executor.execute(hand_id, ctx).await;
+        if result.success {
+            Ok(result.output)
+        } else {
+            Err(result.error.unwrap_or_else(|| "Unknown error".to_string()))
+        }
+    }
+
+    pub async fn get_hand_metrics(&self, hand_id: &str) -> Option<autonomous::HandMetrics> {
+        self.metrics_collector.get(hand_id).await
+    }
+
+    pub async fn get_schedule_list(&self) -> Vec<autonomous::Schedule> {
+        self.schedule_manager.list().await
+    }
+
+    pub async fn add_schedule(&self, hand_id: &str, cron: &str) -> bool {
+        let hand_exists = self.hand_registry.get(hand_id).await.is_some();
+        if !hand_exists {
+            return false;
+        }
+
+        let schedule_type = autonomous::ScheduleType::Cron(cron.to_string());
+        let schedule = autonomous::Schedule::new(
+            uuid::Uuid::new_v4().to_string(),
+            format!("{}_schedule", hand_id),
+            hand_id.to_string(),
+            schedule_type,
+        );
+        self.schedule_manager.add_schedule(schedule).await;
+        true
+    }
+
+    pub async fn remove_schedule(&self, schedule_id: &str) -> bool {
+        self.schedule_manager.remove_schedule(schedule_id).await.is_some()
     }
 }
 

@@ -71,6 +71,42 @@ pub enum EvoCommand {
         /// 数据目录
         data_dir: String,
     },
+    /// 列出所有 Hands
+    HandList,
+    /// 激活 Hand
+    HandActivate {
+        /// Hand ID
+        hand_id: String,
+    },
+    /// 停用 Hand
+    HandDeactivate {
+        /// Hand ID
+        hand_id: String,
+    },
+    /// 手动运行 Hand
+    HandRun {
+        /// Hand ID
+        hand_id: String,
+    },
+    /// 查看 Hand 指标
+    HandMetrics {
+        /// Hand ID
+        hand_id: String,
+    },
+    /// 列出所有调度
+    ScheduleList,
+    /// 添加调度
+    ScheduleAdd {
+        /// Hand ID
+        hand_id: String,
+        /// Cron 表达式
+        cron: String,
+    },
+    /// 删除调度
+    ScheduleRemove {
+        /// Schedule ID
+        schedule_id: String,
+    },
 }
 
 pub async fn execute(command: EvoCommand) -> Result<(), OpenClawError> {
@@ -295,6 +331,96 @@ pub async fn execute(command: EvoCommand) -> Result<(), OpenClawError> {
                 println!("❌ 加载失败: {}", e);
             } else {
                 println!("✅ 数据已从 {} 加载", data_dir);
+            }
+        }
+
+        EvoCommand::HandList => {
+            let hands = runner.get_hand_list().await;
+            println!("🤖 可用的 Hands:");
+            println!();
+            for hand in hands {
+                let status = if hand.enabled { "✅" } else { "❌" };
+                println!("   {} [{}] {}", status, hand.id, hand.name);
+                println!("      描述: {}", hand.description);
+                println!("      分类: {:?}", hand.category);
+                println!();
+            }
+        }
+
+        EvoCommand::HandActivate { hand_id } => {
+            if runner.activate_hand(&hand_id).await {
+                println!("✅ Hand '{}' 已激活", hand_id);
+            } else {
+                println!("❌ Hand '{}' 未找到", hand_id);
+            }
+        }
+
+        EvoCommand::HandDeactivate { hand_id } => {
+            if runner.deactivate_hand(&hand_id).await {
+                println!("✅ Hand '{}' 已停用", hand_id);
+            } else {
+                println!("❌ Hand '{}' 未找到", hand_id);
+            }
+        }
+
+        EvoCommand::HandRun { hand_id } => {
+            let result = runner.run_hand(&hand_id).await;
+            match result {
+                Ok(output) => {
+                    println!("✅ Hand '{}' 执行成功", hand_id);
+                    println!("输出: {:?}", output);
+                }
+                Err(e) => {
+                    println!("❌ Hand '{}' 执行失败: {}", hand_id, e);
+                }
+            }
+        }
+
+        EvoCommand::HandMetrics { hand_id } => {
+            let metrics = runner.get_hand_metrics(&hand_id).await;
+            match metrics {
+                Some(m) => {
+                    println!("📊 Hand '{}' 指标:", hand_id);
+                    println!();
+                    println!("   总运行次数: {}", m.total_runs);
+                    println!("   成功次数:   {}", m.successful_runs);
+                    println!("   失败次数:   {}", m.failed_runs);
+                    println!("   成功率:     {:.1}%", m.success_rate * 100.0);
+                    println!("   平均耗时:   {:.2}ms", m.avg_duration_ms);
+                }
+                None => {
+                    println!("❌ Hand '{}' 未找到或无指标", hand_id);
+                }
+            }
+        }
+
+        EvoCommand::ScheduleList => {
+            let schedules = runner.get_schedule_list().await;
+            println!("📅 调度列表:");
+            println!();
+            for schedule in schedules {
+                let next = schedule.next_run.map(|dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or_else(|| "N/A".to_string());
+                let enabled = if schedule.enabled { "✅" } else { "❌" };
+                println!("   {} [{}] {}", enabled, schedule.id, schedule.hand_id);
+                println!("      类型: {:?}", schedule.schedule_type);
+                println!("      下次运行: {}", next);
+                println!();
+            }
+        }
+
+        EvoCommand::ScheduleAdd { hand_id, cron } => {
+            if runner.add_schedule(&hand_id, &cron).await {
+                println!("✅ 已为 Hand '{}' 添加调度: {}", hand_id, cron);
+            } else {
+                println!("❌ Hand '{}' 未找到", hand_id);
+            }
+        }
+
+        EvoCommand::ScheduleRemove { schedule_id } => {
+            if runner.remove_schedule(&schedule_id).await {
+                println!("✅ 调度 '{}' 已删除", schedule_id);
+            } else {
+                println!("❌ 调度 '{}' 未找到", schedule_id);
             }
         }
     }

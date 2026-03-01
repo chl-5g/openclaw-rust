@@ -523,6 +523,7 @@ pub mod knowledge_graph;
 pub mod skill_validator;
 pub mod version_manager;
 pub mod evo_v2_engine;
+pub mod autonomous;
 
 #[cfg(test)]
 mod tests {

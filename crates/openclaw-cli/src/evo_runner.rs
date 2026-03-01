@@ -6,6 +6,7 @@ use openclaw_agent::{
     EvoV2Engine, EvoContext, EvoSkill, EvoStatistics, 
     Recommendation, ValidationResult, RecurringPattern, ToolCall,
     GraphStatistics, VersionRecord, VersionDiff,
+    Hand, HandMetrics, Schedule, ExecutionContext, ExecutionResult,
 };
 
 pub struct EvoRunner {
@@ -90,6 +91,38 @@ impl EvoRunner {
         };
 
         self.engine.process_task(context).await;
+    }
+
+    pub async fn get_hand_list(&self) -> Vec<Hand> {
+        self.engine.get_hand_list().await
+    }
+
+    pub async fn activate_hand(&self, hand_id: &str) -> bool {
+        self.engine.activate_hand(hand_id).await
+    }
+
+    pub async fn deactivate_hand(&self, hand_id: &str) -> bool {
+        self.engine.deactivate_hand(hand_id).await
+    }
+
+    pub async fn run_hand(&self, hand_id: &str) -> Result<serde_json::Value, String> {
+        self.engine.run_hand(hand_id).await
+    }
+
+    pub async fn get_hand_metrics(&self, hand_id: &str) -> Option<HandMetrics> {
+        self.engine.get_hand_metrics(hand_id).await
+    }
+
+    pub async fn get_schedule_list(&self) -> Vec<Schedule> {
+        self.engine.get_schedule_list().await
+    }
+
+    pub async fn add_schedule(&self, hand_id: &str, cron: &str) -> bool {
+        self.engine.add_schedule(hand_id, cron).await
+    }
+
+    pub async fn remove_schedule(&self, schedule_id: &str) -> bool {
+        self.engine.remove_schedule(schedule_id).await
     }
 }
 
