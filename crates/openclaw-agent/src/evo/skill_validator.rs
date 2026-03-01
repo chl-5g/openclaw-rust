@@ -4,6 +4,7 @@
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationResult {
@@ -253,11 +254,135 @@ impl SkillValidator {
             }
         }
     }
+
+    pub fn validate_tool_sequence(&self, tool_calls: &[crate::evo::pattern_analyzer::ToolCall]) -> ValidationResult {
+        let mut details = Vec::new();
+        
+        let tool_count = tool_calls.len();
+        let passed = tool_count <= 20;
+        details.push(ValidationDetail {
+            rule: "tool_count".to_string(),
+            passed,
+            message: if passed {
+                format!("Tool call count {} is acceptable", tool_count)
+            } else {
+                format!("Too many tool calls: {}", tool_count)
+            },
+        });
+        
+        let tool_names: Vec<_> = tool_calls.iter().map(|c| c.name.clone()).collect();
+        let unique_names: HashSet<_> = tool_names.iter().collect();
+        let has_duplicates = unique_names.len() < tool_names.len();
+        details.push(ValidationDetail {
+            rule: "duplicate_calls".to_string(),
+            passed: !has_duplicates,
+            message: if has_duplicates {
+                "Duplicate tool calls detected".to_string()
+            } else {
+                "No duplicate tool calls".to_string()
+            },
+        });
+        
+        let failed_calls = tool_calls.iter().filter(|c| c.result.is_none()).count();
+        let failure_rate = if !tool_calls.is_empty() {
+            failed_calls as f64 / tool_calls.len() as f64
+        } else {
+            0.0
+        };
+        
+        let passed = failure_rate < 0.3;
+        details.push(ValidationDetail {
+            rule: "failure_rate".to_string(),
+            passed,
+            message: format!("Failure rate: {:.1}%", failure_rate * 100.0),
+        });
+        
+        let rejected = details.iter().any(|d| !d.passed && d.rule == "tool_count");
+        
+        ValidationResult {
+            status: if rejected { ValidationStatus::Rejected } else { ValidationStatus::Approved },
+            message: "Tool sequence validation completed".to_string(),
+            warnings: vec![],
+            details,
+        }
+    }
+
+    pub fn validate_pattern_reusability(&self, pattern: &crate::evo::pattern_analyzer::TaskPattern) -> ValidationResult {
+        let mut details = Vec::new();
+        
+        let tool_count = pattern.tool_sequence.len();
+        let passed = tool_count >= 2 && tool_count <= 10;
+        details.push(ValidationDetail {
+            rule: "pattern_length".to_string(),
+            passed,
+            message: format!("Tool sequence length: {}", tool_count),
+        });
+        
+        let total_params = pattern.param_patterns.len();
+        let generic_params = pattern.param_patterns.iter().filter(|p| p.is_generic).count();
+        let generic_ratio = if total_params > 0 {
+            generic_params as f64 / total_params as f64
+        } else {
+            0.0
+        };
+        
+        let passed = generic_ratio >= 0.3;
+        details.push(ValidationDetail {
+            rule: "parameter_generic_ratio".to_string(),
+            passed,
+            message: format!("Generic parameter ratio: {:.1}%", generic_ratio * 100.0),
+        });
+        
+        let passed = pattern.reusability_score >= 0.5;
+        details.push(ValidationDetail {
+            rule: "reusability_score".to_string(),
+            passed,
+            message: format!("Reusability score: {:.1}%", pattern.reusability_score * 100.0),
+        });
+        
+        let status = if details.iter().all(|d| d.passed) {
+            ValidationStatus::Approved
+        } else if details.iter().any(|d| !d.passed && d.rule == "pattern_length") {
+            ValidationStatus::Rejected
+        } else {
+            ValidationStatus::NeedsReview
+        };
+        
+        ValidationResult {
+            status,
+            message: "Pattern reusability validation completed".to_string(),
+            warnings: vec![],
+            details,
+        }
+    }
+
+    pub fn validate_execution_time(&self, duration_ms: u64, expected_duration_ms: u64) -> ValidationResult {
+        let mut details = Vec::new();
+        
+        let passed = duration_ms <= expected_duration_ms * 2;
+        details.push(ValidationDetail {
+            rule: "execution_time".to_string(),
+            passed,
+            message: if passed {
+                format!("Execution time {}ms is acceptable", duration_ms)
+            } else {
+                format!("Execution time {}ms exceeds limit {}ms", duration_ms, expected_duration_ms * 2)
+            },
+        });
+        
+        ValidationResult {
+            status: if passed { ValidationStatus::Approved } else { ValidationStatus::NeedsReview },
+            message: "Execution time validation completed".to_string(),
+            warnings: vec![],
+            details,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::evo::pattern_analyzer::{ExecutionStep, ParamPattern, ParamType, TaskPattern, ToolCall, ToolCallPattern};
 
     #[test]
     fn test_validate_safe_code() {
@@ -422,5 +547,103 @@ fn fetch(url: String) -> String {
         let result = validator.validate(code);
 
         assert!(result.status == ValidationStatus::Rejected || result.status == ValidationStatus::NeedsReview);
+    }
+
+    #[test]
+    fn test_validate_tool_sequence() {
+        let validator = SkillValidator::new();
+        
+        let tool_calls = vec![
+            crate::evo::pattern_analyzer::ToolCall {
+                name: "fetch".to_string(),
+                arguments: serde_json::json!({}),
+                result: Some(serde_json::json!("data")),
+                duration_ms: 100,
+            },
+            ToolCall {
+                name: "parse".to_string(),
+                arguments: serde_json::json!({}),
+                result: Some(serde_json::json!("parsed")),
+                duration_ms: 50,
+            },
+        ];
+        
+        let result = validator.validate_tool_sequence(&tool_calls);
+        assert_eq!(result.status, ValidationStatus::Approved);
+        assert!(result.details.iter().any(|d| d.rule == "tool_count" && d.passed));
+    }
+
+    #[test]
+    fn test_validate_tool_sequence_too_many() {
+        let validator = SkillValidator::new();
+        
+        let tool_calls: Vec<_> = (0..25).map(|i| {
+            ToolCall {
+                name: format!("tool_{}", i),
+                arguments: serde_json::json!({}),
+                result: Some(serde_json::json!("data")),
+                duration_ms: 100,
+            }
+        }).collect();
+        
+        let result = validator.validate_tool_sequence(&tool_calls);
+        assert!(result.status == ValidationStatus::Rejected || result.status == ValidationStatus::NeedsReview);
+    }
+
+    #[test]
+    fn test_validate_pattern_reusability() {
+        let validator = SkillValidator::new();
+        
+        let pattern = TaskPattern {
+            id: "test-1".to_string(),
+            task_category: "search".to_string(),
+            tool_sequence: vec![
+                ToolCallPattern {
+                    tool_name: "search".to_string(),
+                    param_schema: HashMap::new(),
+                    result_schema: HashMap::new(),
+                },
+                ToolCallPattern {
+                    tool_name: "fetch".to_string(),
+                    param_schema: HashMap::new(),
+                    result_schema: HashMap::new(),
+                },
+            ],
+            param_patterns: vec![
+                ParamPattern {
+                    name: "query".to_string(),
+                    param_type: ParamType::String,
+                    is_generic: true,
+                    examples: vec!["<QUERY>".to_string()],
+                },
+            ],
+            success_indicators: vec![],
+            steps: vec![
+                ExecutionStep {
+                    step_number: 1,
+                    tool_name: "search".to_string(),
+                    input_summary: "query".to_string(),
+                    output_summary: "found".to_string(),
+                    success: true,
+                },
+            ],
+            reusability_score: 0.8,
+            source_task_id: "task-1".to_string(),
+            created_at: chrono::Utc::now(),
+        };
+        
+        let result = validator.validate_pattern_reusability(&pattern);
+        assert!(result.details.iter().any(|d| d.rule == "pattern_length" && d.passed));
+    }
+
+    #[test]
+    fn test_validate_execution_time() {
+        let validator = SkillValidator::new();
+        
+        let result = validator.validate_execution_time(100, 1000);
+        assert_eq!(result.status, ValidationStatus::Approved);
+        
+        let result = validator.validate_execution_time(2500, 1000);
+        assert_eq!(result.status, ValidationStatus::NeedsReview);
     }
 }

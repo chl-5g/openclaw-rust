@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 use super::knowledge_graph::{KnowledgeGraph, SkillNode};
 use super::learning_history::{LearningHistory, LearningRecord, LearningType, RecurringPattern};
 use super::pattern_analyzer::{PatternAnalyzer, TaskPattern, ToolCall};
-use super::skill_validator::{SkillValidator, ValidationResult};
+use super::skill_validator::{SkillValidator, ValidationResult, ValidationStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvoConfig {
@@ -108,11 +108,35 @@ impl EvoV2Engine {
     }
 
     pub async fn process_task(&self, context: EvoContext) -> EvoEvolutionResult {
+        let tool_validation = self.skill_validator.validate_tool_sequence(&context.tool_calls);
+        
+        if tool_validation.status == ValidationStatus::Rejected {
+            return EvoEvolutionResult {
+                evolved: false,
+                skill_id: String::new(),
+                changes: vec![format!("Tool sequence rejected: {}", tool_validation.message)],
+                new_reliability: 0.0,
+                message: "Task rejected due to invalid tool sequence".to_string(),
+            };
+        }
+
         let pattern = self.pattern_analyzer.extract(
             &context.task_id,
             &context.task_description,
             &context.tool_calls,
         );
+
+        let pattern_validation = self.skill_validator.validate_pattern_reusability(&pattern);
+        
+        if pattern_validation.status == ValidationStatus::Rejected {
+            return EvoEvolutionResult {
+                evolved: false,
+                skill_id: String::new(),
+                changes: vec![format!("Pattern rejected: {}", pattern_validation.message)],
+                new_reliability: 0.0,
+                message: "Pattern rejected due to low reusability".to_string(),
+            };
+        }
 
         let learning_type = if context.success {
             LearningType::SuccessPattern
