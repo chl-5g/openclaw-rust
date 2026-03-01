@@ -64,6 +64,14 @@ impl EvoRunner {
         self.engine.get_version_diff(skill_id, from, to).await
     }
 
+    pub async fn save_all(&self, data_dir: &str) -> std::io::Result<()> {
+        self.engine.save_all(data_dir).await
+    }
+
+    pub async fn load_all(&self, data_dir: &str) -> std::io::Result<()> {
+        self.engine.load_all(data_dir).await
+    }
+
     pub async fn process_task(
         &self,
         task_id: String,

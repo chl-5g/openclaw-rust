@@ -22,6 +22,9 @@ pub struct EvoConfig {
     pub max_patterns_stored: usize,
     pub similarity_threshold: f64,
     pub validation_strict: bool,
+    pub expected_execution_time_ms: u64,
+    pub enable_version_backup: bool,
+    pub max_versions_per_skill: usize,
 }
 
 impl Default for EvoConfig {
@@ -32,6 +35,9 @@ impl Default for EvoConfig {
             max_patterns_stored: 1000,
             similarity_threshold: 0.8,
             validation_strict: true,
+            expected_execution_time_ms: 60000,
+            enable_version_backup: true,
+            max_versions_per_skill: 10,
         }
     }
 }
@@ -138,6 +144,21 @@ impl EvoV2Engine {
                 changes: vec![format!("Pattern rejected: {}", pattern_validation.message)],
                 new_reliability: 0.0,
                 message: "Pattern rejected due to low reusability".to_string(),
+            };
+        }
+
+        let time_validation = self.skill_validator.validate_execution_time(
+            context.execution_time_ms,
+            self.config.expected_execution_time_ms,
+        );
+
+        if time_validation.status == ValidationStatus::Rejected {
+            return EvoEvolutionResult {
+                evolved: false,
+                skill_id: String::new(),
+                changes: vec![format!("Execution time rejected: {}", time_validation.message)],
+                new_reliability: 0.0,
+                message: "Task rejected due to timeout".to_string(),
             };
         }
 
@@ -308,7 +329,19 @@ impl EvoV2Engine {
             graph.add_skill(node);
         }
 
-        self.learned_skills.write().await.insert(skill_id, skill.clone());
+        self.learned_skills.write().await.insert(skill_id.clone(), skill.clone());
+
+        {
+            let mut vm = self.version_manager.write().await;
+            vm.create_version(
+                &skill_id,
+                skill.code.clone(),
+                pattern.clone(),
+                skill.reliability,
+                "Initial version".to_string(),
+                "auto_create",
+            );
+        }
 
         skill
     }
@@ -430,6 +463,38 @@ impl EvoV2Engine {
     pub async fn get_version_diff(&self, skill_id: &str, v1: u32, v2: u32) -> Option<super::version_manager::VersionDiff> {
         let vm = self.version_manager.read().await;
         vm.diff(skill_id, v1, v2)
+    }
+
+    pub async fn save_all(&self, data_dir: &str) -> std::io::Result<()> {
+        let kg_path = format!("{}/knowledge_graph.json", data_dir);
+        {
+            let graph = self.knowledge_graph.read().await;
+            graph.save_to_file(&kg_path)?;
+        }
+
+        let vm_path = format!("{}/skill_versions.json", data_dir);
+        {
+            let vm = self.version_manager.read().await;
+            vm.save_to_file(&vm_path)?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn load_all(&self, data_dir: &str) -> std::io::Result<()> {
+        let kg_path = format!("{}/knowledge_graph.json", data_dir);
+        if let Ok(graph) = KnowledgeGraph::load_from_file(&kg_path) {
+            let mut g = self.knowledge_graph.write().await;
+            *g = graph;
+        }
+
+        let vm_path = format!("{}/skill_versions.json", data_dir);
+        if let Ok(vm) = VersionManager::load_from_file(&vm_path) {
+            let mut v = self.version_manager.write().await;
+            *v = vm;
+        }
+
+        Ok(())
     }
 }
 

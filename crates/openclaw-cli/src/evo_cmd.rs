@@ -61,6 +61,16 @@ pub enum EvoCommand {
         /// 目标版本
         to: u32,
     },
+    /// 持久化所有数据
+    Save {
+        /// 数据目录
+        data_dir: String,
+    },
+    /// 加载所有数据
+    Load {
+        /// 数据目录
+        data_dir: String,
+    },
 }
 
 pub async fn execute(command: EvoCommand) -> Result<(), OpenClawError> {
@@ -269,6 +279,22 @@ pub async fn execute(command: EvoCommand) -> Result<(), OpenClawError> {
                 }
             } else {
                 println!("❌ 无法计算差异: 版本不存在");
+            }
+        }
+
+        EvoCommand::Save { data_dir } => {
+            if let Err(e) = runner.save_all(&data_dir).await {
+                println!("❌ 保存失败: {}", e);
+            } else {
+                println!("✅ 数据已保存到 {}", data_dir);
+            }
+        }
+
+        EvoCommand::Load { data_dir } => {
+            if let Err(e) = runner.load_all(&data_dir).await {
+                println!("❌ 加载失败: {}", e);
+            } else {
+                println!("✅ 数据已从 {} 加载", data_dir);
             }
         }
     }
