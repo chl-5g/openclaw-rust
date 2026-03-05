@@ -27,6 +27,41 @@ pub enum MqttError {
     QosNotSupported(u8),
     #[error("TLS error: {0}")]
     TlsError(String),
+    #[error("Heartbeat error: {0}")]
+    HeartbeatError(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MqttHeartbeatConfig {
+    pub enabled: bool,
+    pub interval_secs: u64,
+    pub topic: String,
+    pub qos: MqttQos,
+    pub retain: bool,
+    pub payload_template: Option<String>,
+}
+
+impl Default for MqttHeartbeatConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval_secs: 30,
+            topic: "device/heartbeat".to_string(),
+            qos: MqttQos::AtLeastOnce,
+            retain: false,
+            payload_template: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeartbeatPayload {
+    pub device_id: String,
+    pub timestamp: u64,
+    pub status: String,
+    pub uptime_secs: u64,
+    pub memory_usage_percent: Option<f32>,
+    pub cpu_usage_percent: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,10 +180,13 @@ pub mod async_impl {
         config: MqttConfig,
         message_tx: mpsc::Sender<MqttMessage>,
         message_rx: Arc<RwLock<Option<mpsc::Receiver<MqttMessage>>>>,
+        heartbeat_config: MqttHeartbeatConfig,
+        heartbeat_handle: Arc<RwLock<Option<tokio::task::JoinHandle<()>>>>,
+        start_time: std::time::Instant,
     }
 
     impl AsyncMqttClient {
-        pub async fn new(config: MqttConfig) -> Result<Self, MqttError> {
+        pub async fn new(config: MqttConfig, heartbeat_config: MqttHeartbeatConfig) -> Result<Self, MqttError> {
             let client_id = config
                 .client_id
                 .clone()
@@ -162,6 +200,16 @@ pub mod async_impl {
                 mqtt_options.set_credentials(username, password);
             }
 
+            if let Some(ref last_will) = config.last_will {
+                let will = rumqttc::LastWill::new(
+                    &last_will.topic,
+                    last_will.message.clone(),
+                    last_will.qos.into(),
+                    last_will.retain,
+                );
+                mqtt_options.set_last_will(will);
+            }
+
             let (client, eventloop) = AsyncClient::new(mqtt_options, 100);
             let (message_tx, message_rx) = mpsc::channel(100);
 
@@ -171,6 +219,9 @@ pub mod async_impl {
                 config,
                 message_tx,
                 message_rx: Arc::new(RwLock::new(Some(message_rx))),
+                heartbeat_config,
+                heartbeat_handle: Arc::new(RwLock::new(None)),
+                start_time: std::time::Instant::now(),
             })
         }
 
@@ -221,6 +272,69 @@ pub mod async_impl {
                     }
                 }
             })
+        }
+
+        pub fn start_heartbeat(&self, device_id: String) {
+            if !self.heartbeat_config.enabled {
+                return;
+            }
+
+            let client = self.client.clone();
+            let config = self.heartbeat_config.clone();
+            let start_time = self.start_time;
+            let handle = tokio::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(config.interval_secs));
+                
+                loop {
+                    interval.tick().await;
+                    
+                    let payload = HeartbeatPayload {
+                        device_id: device_id.clone(),
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs(),
+                        status: "online".to_string(),
+                        uptime_secs: start_time.elapsed().as_secs(),
+                        memory_usage_percent: None,
+                        cpu_usage_percent: None,
+                    };
+
+                    let payload_json = if let Some(ref template) = config.payload_template {
+                        template
+                            .replace("{device_id}", &payload.device_id)
+                            .replace("{timestamp}", &payload.timestamp.to_string())
+                            .replace("{status}", &payload.status)
+                            .replace("{uptime}", &payload.uptime_secs.to_string())
+                    } else {
+                        serde_json::to_string(&payload).unwrap_or_default()
+                    };
+
+                    let _ = client
+                        .publish(&config.topic, config.qos.into(), config.retain, payload_json.into_bytes())
+                        .await;
+                }
+            });
+
+            let handle_guard = self.heartbeat_handle.try_write();
+             if let Ok(mut guard) = handle_guard {
+                *guard = Some(handle);
+            }
+        }
+
+        pub fn stop_heartbeat(&self) {
+            if let Ok(mut handle_guard) = self.heartbeat_handle.try_write() {
+                if let Some(handle) = handle_guard.take() {
+                    handle.abort();
+                }
+            }
+        }
+
+        pub fn is_heartbeat_running(&self) -> bool {
+            if let Ok(handle_guard) = self.heartbeat_handle.try_read() {
+                return handle_guard.is_some();
+            }
+            false
         }
     }
 }

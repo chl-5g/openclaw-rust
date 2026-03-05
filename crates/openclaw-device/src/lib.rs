@@ -37,6 +37,8 @@ pub mod modules;
 
 pub mod unified_manager;
 
+pub mod heartbeat;
+
 pub use registry::DeviceRegistry;
 pub use unified_manager::UnifiedDeviceManager;
 pub use capabilities::DeviceCapabilities;
@@ -46,6 +48,14 @@ pub use config::CustomDeviceConfig;
 pub use platform::Platform;
 pub use platform::ComputeCategory;
 pub use device::DeviceStatus;
+
+pub use heartbeat::{
+    HeartbeatConfig, HeartbeatData, HeartbeatManager, HeartbeatProvider, DeviceMetrics,
+    apply_topic_template, apply_lwt_template, HeartbeatError,
+    embedded::{Esp32HeartbeatProvider, Stm32HeartbeatProvider, RiscVHeartbeatProvider},
+    robot::{JetsonHeartbeatProvider, Ros2HeartbeatProvider},
+    host::{CameraHeartbeatProvider, ScreenHeartbeatProvider, LocationHeartbeatProvider},
+};
 pub use device_trait::DeviceConfig;
 pub use device_trait::DeviceBuilder;
 pub use unified_manager::DeviceInfo;
