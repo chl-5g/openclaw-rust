@@ -38,6 +38,8 @@ pub enum SkillType {
     Prompt,
     Channel,
     Account,
+    Config,
+    Workflow,
 }
 
 impl Default for SkillType {
@@ -213,12 +215,78 @@ impl DynamicSkill {
         }
     }
 
+    pub fn new_config(
+        id: String,
+        name: String,
+        metadata: HashMap<String, String>,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            description: String::new(),
+            format: SkillFormat::default(),
+            skill_type: SkillType::Config,
+            code: None,
+            instructions: None,
+            language: "config".to_string(),
+            source: SkillSource::default(),
+            gating: None,
+            compatibility: None,
+            metadata,
+            allowed_tools: Vec::new(),
+            created_by: "user".to_string(),
+            created_at: Utc::now(),
+            version: "1.0.0".to_string(),
+        }
+    }
+
+    pub fn new_workflow(
+        id: String,
+        name: String,
+        metadata: HashMap<String, String>,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            description: String::new(),
+            format: SkillFormat::default(),
+            skill_type: SkillType::Workflow,
+            code: None,
+            instructions: None,
+            language: "workflow".to_string(),
+            source: SkillSource::default(),
+            gating: None,
+            compatibility: None,
+            metadata,
+            allowed_tools: Vec::new(),
+            created_by: "user".to_string(),
+            created_at: Utc::now(),
+            version: "1.0.0".to_string(),
+        }
+    }
+
     pub fn is_prompt(&self) -> bool {
         self.skill_type == SkillType::Prompt
     }
 
     pub fn is_code(&self) -> bool {
         self.skill_type == SkillType::Code
+    }
+
+    pub fn is_channel(&self) -> bool {
+        self.skill_type == SkillType::Channel
+    }
+
+    pub fn is_account(&self) -> bool {
+        self.skill_type == SkillType::Account
+    }
+
+    pub fn is_config(&self) -> bool {
+        self.skill_type == SkillType::Config
+    }
+
+    pub fn is_workflow(&self) -> bool {
+        self.skill_type == SkillType::Workflow
     }
 }
 

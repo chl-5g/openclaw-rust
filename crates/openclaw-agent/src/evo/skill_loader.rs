@@ -84,7 +84,7 @@ impl SkillLoader {
             name: parsed.name,
             description: parsed.description,
             format: SkillFormat::AgentSkills,
-            skill_type: SkillType::Prompt,
+            skill_type: parsed.skill_type,
             code: None,
             instructions: Some(body),
             language: "prompt".to_string(),
@@ -131,6 +131,7 @@ impl SkillLoader {
     fn parse_yaml_frontmatter(&self, frontmatter: &str) -> Result<ParsedSkill, String> {
         let mut name = String::new();
         let mut description = String::new();
+        let mut skill_type = SkillType::Prompt;
         let mut license = None;
         let mut compatibility = None;
         let mut metadata = std::collections::HashMap::new();
@@ -143,6 +144,21 @@ impl SkillLoader {
                 name = line.trim_start_matches("name:").trim().to_string();
             } else if line.starts_with("description:") {
                 description = line.trim_start_matches("description:").trim().to_string();
+            } else if line.starts_with("skill_type:") {
+                let t = line.trim_start_matches("skill_type:").trim().to_lowercase();
+                if t == "channel" {
+                    skill_type = SkillType::Channel;
+                } else if t == "account" {
+                    skill_type = SkillType::Account;
+                } else if t == "config" {
+                    skill_type = SkillType::Config;
+                } else if t == "workflow" {
+                    skill_type = SkillType::Workflow;
+                } else if t == "prompt" {
+                    skill_type = SkillType::Prompt;
+                } else {
+                    skill_type = SkillType::Code;
+                }
             } else if line.starts_with("license:") {
                 license = Some(line.trim_start_matches("license:").trim().to_string());
             } else if line.starts_with("compatibility:") {
@@ -169,7 +185,7 @@ impl SkillLoader {
             name,
             description,
             format: SkillFormat::AgentSkills,
-            skill_type: SkillType::Prompt,
+            skill_type,
             code: None,
             instructions: None,
             language: "prompt".to_string(),
@@ -198,7 +214,23 @@ impl SkillLoader {
                 let skill_md = path.join("SKILL.md");
                 if skill_md.exists() {
                     match self.load_from_file(&skill_md).await {
-                        Ok(skill) => skills.push(skill),
+                        Ok(mut skill) => {
+                            // 添加 references、scripts、assets 路径到 metadata
+                            let references_dir = path.join("references");
+                            if references_dir.exists() {
+                                skill.metadata.insert("references_dir".into(), references_dir.to_string_lossy().into());
+                            }
+                            let scripts_dir = path.join("scripts");
+                            if scripts_dir.exists() {
+                                skill.metadata.insert("scripts_dir".into(), scripts_dir.to_string_lossy().into());
+                            }
+                            let assets_dir = path.join("assets");
+                            if assets_dir.exists() {
+                                skill.metadata.insert("assets_dir".into(), assets_dir.to_string_lossy().into());
+                            }
+                            skill.metadata.insert("skill_dir".into(), path.to_string_lossy().into());
+                            skills.push(skill);
+                        }
                         Err(e) => tracing::warn!("Failed to load {}: {}", skill_md.display(), e),
                     }
                 }
@@ -290,10 +322,18 @@ impl SkillLoader {
                 instructions_lines.push(trimmed);
             } else if !trimmed.is_empty() {
                 match current_section.as_str() {
-                    "type" => {
+                    "type" | "skill_type" => {
                         let t = trimmed.to_lowercase();
                         if t == "prompt" {
                             skill_type = SkillType::Prompt;
+                        } else if t == "channel" {
+                            skill_type = SkillType::Channel;
+                        } else if t == "account" {
+                            skill_type = SkillType::Account;
+                        } else if t == "config" {
+                            skill_type = SkillType::Config;
+                        } else if t == "workflow" {
+                            skill_type = SkillType::Workflow;
                         } else {
                             skill_type = SkillType::Code;
                         }

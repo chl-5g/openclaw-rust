@@ -513,6 +513,9 @@ impl Default for SkillSandbox {
 pub mod registry;
 pub mod adapter;
 pub mod skill_loader;
+pub mod skill_hot_reloader;
+pub mod skill_config_applier;
+pub mod workflow_registry;
 pub mod skill_tool_adapter;
 pub mod propagation;
 pub mod unified_skill_service;
