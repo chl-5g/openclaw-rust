@@ -22,6 +22,7 @@ pub mod orchestrator;
 pub mod ports;
 pub mod service_factory;
 pub mod skill_service;
+pub mod squad_service;
 pub mod sse;
 pub mod vector_store_registry;
 pub mod voice_service;
