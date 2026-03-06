@@ -2,8 +2,6 @@
 
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
-
 use crate::gateway::auth::{AuthManager, AuthenticatedSession};
 use crate::gateway::protocol::{GatewayFrame, RunId, SessionSnapshot};
 use crate::gateway::two_phase::TwoPhaseManager;

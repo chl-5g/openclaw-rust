@@ -9,12 +9,8 @@
 
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
-
 use crate::control::{ControlMessage, MessageQueue, QueueMode};
 use crate::safety::{AgentSafetyConfig, AgentSafetyWrapper};
-use crate::task::{TaskInput, TaskPriority, TaskRequest, TaskResult, TaskStatus};
-use crate::types::AgentId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunReason {

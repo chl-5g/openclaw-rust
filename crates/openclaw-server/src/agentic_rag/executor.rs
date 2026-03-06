@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 use async_trait::async_trait;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 
 use openclaw_core::{Message, Result};
 

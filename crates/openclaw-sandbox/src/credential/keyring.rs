@@ -56,7 +56,6 @@ impl Keyring for NoOpKeyring {
 pub mod system {
     use super::*;
     use std::sync::Arc;
-    use tokio::sync::RwLock;
     
     pub struct SystemKeyring {
         inner: Arc<dyn Keyring>,

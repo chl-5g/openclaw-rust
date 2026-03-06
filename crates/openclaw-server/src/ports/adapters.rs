@@ -18,8 +18,6 @@ use openclaw_security::{SecurityPipeline, PipelineResult};
 use openclaw_tools::ToolRegistry;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex as TokioMutex;
-use tokio::sync::RwLock;
 
 fn memory_item_to_entry(m: MemoryItem) -> MemoryEntry {
     MemoryEntry {
