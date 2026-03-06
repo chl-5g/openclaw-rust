@@ -4,8 +4,6 @@
 //! - ContextCompactor: 上下文压缩器
 //! - MemoryCleanupPolicy: 内存清理策略
 
-use std::collections::VecDeque;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

@@ -30,6 +30,17 @@ impl Default for TurnLimitConfig {
     }
 }
 
+impl TurnLimitConfig {
+    pub fn from_complexity(complexity: &crate::decision::TaskComplexity) -> Self {
+        Self {
+            max_turns: complexity.recommended_max_turns() as u64,
+            max_tokens_per_turn: 100000,
+            max_total_tokens: complexity.recommended_max_turns() as u64 * 100000,
+            window_size: 10,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TurnStats {
     pub turn_count: u64,

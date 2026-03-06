@@ -14,7 +14,6 @@ use crate::safety::turn_limiter::{TurnLimiter, TurnLimitConfig};
 use crate::safety::timeout::{TimeoutController, TimeoutConfig};
 use crate::safety::abort_control::AbortableTask;
 use crate::session_tree::SessionTree;
-use crate::task::{TaskInput, TaskRequest, TaskResult};
 
 #[derive(Debug, Clone)]
 pub struct AgentSafetyConfig {
