@@ -272,7 +272,7 @@ mod tests {
             enabled: true,
         };
         
-        router.add_route(rule).await;
+        let _ = router.add_route(rule).await;
         router.remove_route("agent_1", "agent_2").await;
         
         let routes = router.list_routes("agent_1").await;
@@ -297,7 +297,7 @@ mod tests {
             enabled: true,
         };
         
-        router.add_route(rule).await;
+        let _ = router.add_route(rule).await;
         
         let message = create_test_message();
         let result = router.route(&message).await;
@@ -323,7 +323,7 @@ mod tests {
             enabled: true,
         };
         
-        router.add_route(rule).await;
+        let _ = router.add_route(rule).await;
         
         let message = create_test_message();
         let result = router.route(&message).await;
@@ -349,7 +349,7 @@ mod tests {
             enabled: true,
         };
         
-        router.add_route(rule).await;
+        let _ = router.add_route(rule).await;
         
         let result = router.route_delegation("agent_1", "development task").await;
         
@@ -401,7 +401,7 @@ mod tests {
             enabled: true,
         };
         
-        router.add_route(rule).await;
+        let _ = router.add_route(rule).await;
         router.clear_routes("agent_1").await;
         
         let routes = router.list_routes("agent_1").await;
