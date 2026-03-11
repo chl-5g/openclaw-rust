@@ -528,6 +528,9 @@ pub mod version_manager;
 pub mod evo_v2_engine;
 pub mod autonomous;
 pub mod llm_skill_generator;
+pub mod skill;
+
+pub use skill::{SkillManager, ManagedSkill, SkillOrigin, InstalledSkill, SearchResult};
 
 #[cfg(test)]
 mod tests {

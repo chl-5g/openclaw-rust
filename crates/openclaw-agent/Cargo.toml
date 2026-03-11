@@ -37,6 +37,8 @@ uuid.workspace = true
 futures.workspace = true
 regex.workspace = true
 rusqlite.workspace = true
+reqwest.workspace = true
+dirs.workspace = true
 
 [dev-dependencies]
 tokio-test.workspace = true

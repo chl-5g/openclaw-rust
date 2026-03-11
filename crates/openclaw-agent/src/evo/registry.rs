@@ -399,6 +399,24 @@ impl SharedSkillRegistry {
         registry.skills.iter().any(|s| s.name == name)
     }
 
+    pub async fn unregister_skill(&self, name: &str) -> crate::Result<DynamicSkill> {
+        let mut registry = self.inner.write().await;
+        
+        let idx = registry.skills.iter()
+            .position(|s| s.name == name || s.id == name)
+            .ok_or_else(|| crate::OpenClawError::Config(format!("Skill '{}' not found", name)))?;
+        
+        let removed = registry.skills.remove(idx);
+        
+        drop(registry);
+        
+        let mut compiled = self.compiled_skills.write().await;
+        compiled.remove(&removed.id);
+        
+        tracing::info!("Skill '{}' unregistered", removed.name);
+        Ok(removed)
+    }
+
     pub fn clone_arc(&self) -> Arc<RwLock<SkillRegistryInner>> {
         Arc::clone(&self.inner)
     }
