@@ -5,7 +5,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+
 use tokio::sync::RwLock;
 
 use super::pattern_analyzer::{TaskPattern, ToolCallPattern};
