@@ -1,6 +1,6 @@
-# OpenClaw Rust
+# OpenAgentic
 
-🤖 **OpenClaw Rust** - 你的个人 AI 助手 (Rust 实现)
+🤖 **OpenAgentic** - 你的个人 AI 助手 (Rust 实现)
 
 一个功能丰富、模块化的 AI 助手平台，采用现代 Rust 技术栈构建，支持多智能体协作、语音交互、实时协作画布、浏览器自动化控制等功能。
 
@@ -19,7 +19,7 @@
 | 🛠️ **工具生态** | 浏览器控制、定时任务、Cron 调度、Webhook、设备节点、MCP 集成 |
 | 📝 **Prompt-Driven 技能** | 通过编写 SKILL.md 扩展 Agent 能力，技能自动注入 System Prompt |
 | 🚪 **智能技能准入** | 环境检测 (bins/env/files)，技能根据系统环境自动启用/禁用 |
-| 🔄 **跨格式兼容** | 支持 OpenClaw、AgentSkills 两种技能格式 |
+| 🔄 **跨格式兼容** | 支持 OpenAgentic、AgentSkills 两种技能格式 |
 | 🧬 **Evo 技能进化** | LLM 自动生成新技能，ACP 广播跨 Agent 传播 |
 | 📡 **ACP 协议** | Agent Capability Protocol，分布式 Agent 能力发现与协作 |
 | 🌐 **去中心化通道** | Discord Gateway、消息通道集成框架 |
@@ -32,31 +32,31 @@
 - **可扩展**: Provider 模式支持灵活扩展 AI 提供商、消息通道、工具类型
 - **安全性**: 多层安全防护，敏感操作沙箱隔离，完整审计日志
 - **高性能**: 异步 Rust (tokio)，流式响应，连接池
-- **解耦**: 通过 `openclaw-ws` 模块实现 WebSocket 通用解耦
+- **解耦**: 通过 `openagentic-ws` 模块实现 WebSocket 通用解耦
 
 ### 核心模块
 
 ```
-openclaw-rust/
+open-agentic/
 ├── crates/
-│   ├── openclaw-core       # 核心类型定义、配置结构、错误类型
-│   ├── openclaw-ai         # AI Provider 抽象层 (OpenAI/Anthropic/DeepSeek...)
-│   ├── openclaw-memory     # 三层记忆系统 (工作/短期/长期)
-│   ├── openclaw-vector     # 向量存储抽象 (Qdrant/Milvus/Chroma...)
-│   ├── openclaw-channels   # 消息通道集成框架 (Discord/Telegram/钉钉等)
-│   ├── openclaw-agent      # 多智能体系统 + Provider 抽象 + Evo 技能进化引擎
-│   ├── openclaw-voice      # STT/TTS 语音服务
-│   ├── openclaw-server     # HTTP/WebSocket Gateway 服务
-│   ├── openclaw-canvas     # 实时协作画布 + CRDT 冲突解决
-│   ├── openclaw-browser    # 浏览器自动化 (chromiumoxide)
-│   ├── openclaw-sandbox    # Docker/WASM 安全沙箱
-│   ├── openclaw-tools      # 工具系统 (Cron/Webhook/技能/MCP)
-│   ├── openclaw-device     # 设备节点 + 嵌入式设备控制 + HAL
-│   ├── openclaw-security   # 安全管线 (过滤/验证/审计)
-│   ├── openclaw-acp        # Agent Capability Protocol 实现
-│   ├── openclaw-ws         # 通用 WebSocket 模块 (连接/房间/消息编解码)
-│   ├── openclaw-cli        # CLI 命令行工具
-│   └── openclaw-testing    # 测试工具与 fixtures
+│   ├── openagentic-core       # 核心类型定义、配置结构、错误类型
+│   ├── openagentic-ai         # AI Provider 抽象层 (OpenAI/Anthropic/DeepSeek...)
+│   ├── openagentic-memory     # 三层记忆系统 (工作/短期/长期)
+│   ├── openagentic-vector     # 向量存储抽象 (Qdrant/Milvus/Chroma...)
+│   ├── openagentic-channels   # 消息通道集成框架 (Discord/Telegram/钉钉等)
+│   ├── openagentic-agent      # 多智能体系统 + Provider 抽象 + Evo 技能进化引擎
+│   ├── openagentic-voice      # STT/TTS 语音服务
+│   ├── openagentic-server     # HTTP/WebSocket Gateway 服务
+│   ├── openagentic-canvas     # 实时协作画布 + CRDT 冲突解决
+│   ├── openagentic-browser    # 浏览器自动化 (chromiumoxide)
+│   ├── openagentic-sandbox    # Docker/WASM 安全沙箱
+│   ├── openagentic-tools      # 工具系统 (Cron/Webhook/技能/MCP)
+│   ├── openagentic-device     # 设备节点 + 嵌入式设备控制 + HAL
+│   ├── openagentic-security   # 安全管线 (过滤/验证/审计)
+│   ├── openagentic-acp        # Agent Capability Protocol 实现
+│   ├── openagentic-ws         # 通用 WebSocket 模块 (连接/房间/消息编解码)
+│   ├── openagentic-cli        # CLI 命令行工具
+│   └── openagentic-testing    # 测试工具与 fixtures
 ```
 
 ### 技术栈
@@ -65,7 +65,7 @@ openclaw-rust/
 |------|------|
 | **运行时** | tokio (异步 Runtime) |
 | **Web 框架** | axum |
-| **WebSocket** | tokio-tungstenite + openclaw-ws |
+| **WebSocket** | tokio-tungstenite + openagentic-ws |
 | **浏览器控制** | chromiumoxide (CDP) |
 | **序列化** | serde + serde_json |
 | **向量存储** | qdrant-client, lancedb, chroma-rust, milvus |
@@ -138,7 +138,7 @@ Matrix (去中心化) | WebChat (自定义 Webhook) | Email | SMS
 ### 扩展集成
 
 - **MCP**: Model Context Protocol 客户端 (Stdio/HTTP/SSE)
-- **技能系统**: ClawHub/内置/托管/工作区技能 (GoClaw/OpenClaw/AgentSkills 兼容)
+- **技能系统**: ClawHub/内置/托管/工作区技能 (GoClaw/OpenAgentic/AgentSkills 兼容)
 
 ### 技能进化 (Evo)
 
@@ -151,7 +151,7 @@ Matrix (去中心化) | WebChat (自定义 Webhook) | Email | SMS
 
 ### 功能特性
 
-- **WebSocket 实时协作**: 基于 `openclaw-ws` 模块的房间通信
+- **WebSocket 实时协作**: 基于 `openagentic-ws` 模块的房间通信
 - **CRDT 冲突解决**: 支持多用户并发编辑
 - **光标同步**: 实时显示其他用户光标位置
 - **元素操作**: 矩形、椭圆、线条、文本、图片等
@@ -160,7 +160,7 @@ Matrix (去中心化) | WebChat (自定义 Webhook) | Email | SMS
 ### 架构
 
 ```
-openclaw-canvas/
+openagentic-canvas/
 ├── canvas.rs          # 画布管理
 ├── collaboration.rs   # 协作会话管理
 ├── draw/              # 图形绘制
@@ -191,12 +191,12 @@ pub enum AcpMessage {
 }
 ```
 
-## 🔌 统一 WebSocket 模块 (openclaw-ws)
+## 🔌 统一 WebSocket 模块 (openagentic-ws)
 
-为解耦 WebSocket 实现，新增 `openclaw-ws` 通用模块：
+为解耦 WebSocket 实现，新增 `openagentic-ws` 通用模块：
 
 ```rust
-use openclaw_ws::{JsonCodec, RoomId, WsRoom, WsConnection, WsMessageCodec};
+use openagentic_ws::{JsonCodec, RoomId, WsRoom, WsConnection, WsMessageCodec};
 
 // 定义消息类型
 #[derive(Clone, Serialize, Deserialize)]
@@ -221,8 +221,8 @@ room.broadcast(&msg).await?;
 
 ```bash
 # 克隆项目
-git clone https://github.com/openclaw/openclaw-rust.git
-cd openclaw-rust
+git clone https://github.com/openagentic/open-agentic.git
+cd open-agentic
 
 # 构建项目
 cargo build --release
@@ -289,7 +289,7 @@ cargo run -- doctor
 
 ### 配置文件
 
-配置文件位于 `~/.openclaw-rust/openclaw.json`：
+配置文件位于 `~/.open-agentic/openagentic.json`：
 
 ```json
 {
@@ -312,7 +312,7 @@ cargo run -- doctor
 
 ### 安全沙箱配置
 
-OpenClaw 支持三种沙箱执行模式：
+OpenAgentic 支持三种沙箱执行模式：
 
 | 模式 | 描述 | 适用场景 |
 |------|------|---------|
@@ -336,7 +336,7 @@ OpenClaw 支持三种沙箱执行模式：
 ```bash
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENCLAW_PORT=18789
+export OPENAGENTIC_PORT=18789
 ```
 
 ## 🔧 开发
@@ -348,8 +348,8 @@ export OPENCLAW_PORT=18789
 cargo test
 
 # 单模块测试
-cargo test -p openclaw-ws
-cargo test -p openclaw-server
+cargo test -p openagentic-ws
+cargo test -p openagentic-server
 ```
 
 ### 代码检查
@@ -389,4 +389,4 @@ MIT License - 详见 [LICENSE](LICENSE) 文件。
 
 ---
 
-**OpenClaw Rust** - 让 AI 助手更简单、更强大
+**OpenAgentic** - 让 AI 助手更简单、更强大

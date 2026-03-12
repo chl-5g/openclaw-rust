@@ -113,7 +113,7 @@ jobs:
           toolchain: stable
           targets: x86_64-unknown-linux-gnu
       - name: Build release
-        run: cargo build --release --bin openclaw-rust
+        run: cargo build --release --bin open-agentic
 
   coverage:
     name: Code Coverage

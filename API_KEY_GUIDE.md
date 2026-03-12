@@ -6,53 +6,53 @@
 
 ```bash
 # 设置 OpenAI API Key
-openclaw-rust api-key set openai sk-proj-xxxxx
+open-agentic api-key set openai sk-proj-xxxxx
 
 # 设置 Anthropic API Key
-openclaw-rust api-key set anthropic sk-ant-xxxxx
+open-agentic api-key set anthropic sk-ant-xxxxx
 
 # 设置 Gemini API Key
-openclaw-rust api-key set gemini AIzaSyxxxxx
+open-agentic api-key set gemini AIzaSyxxxxx
 
 # 设置国内提供商
-openclaw-rust api-key set glm your-glm-api-key
-openclaw-rust api-key set qwen your-qwen-api-key
-openclaw-rust api-key set deepseek your-deepseek-api-key
-openclaw-rust api-key set kimi your-kimi-api-key
-openclaw-rust api-key set minimax your-minimax-api-key
+open-agentic api-key set glm your-glm-api-key
+open-agentic api-key set qwen your-qwen-api-key
+open-agentic api-key set deepseek your-deepseek-api-key
+open-agentic api-key set kimi your-kimi-api-key
+open-agentic api-key set minimax your-minimax-api-key
 ```
 
 ### 2. 查看配置
 
 ```bash
 # 列出所有提供商
-openclaw-rust api-key list
+open-agentic api-key list
 
 # 查看特定提供商
-openclaw-rust api-key get openai
+open-agentic api-key get openai
 
 # 导出配置（隐藏敏感信息）
-openclaw-rust api-key export
+open-agentic api-key export
 ```
 
 ### 3. 管理提供商
 
 ```bash
 # 设置默认提供商
-openclaw-rust api-key default openai
+open-agentic api-key default openai
 
 # 删除提供商配置
-openclaw-rust api-key remove deepseek
+open-agentic api-key remove deepseek
 
 # 验证 API Key 格式
-openclaw-rust api-key validate openai sk-test
+open-agentic api-key validate openai sk-test
 ```
 
 ---
 
 ## 📁 配置文件位置
 
-默认配置文件路径：`~/.openclaw-rust/user_config.json`
+默认配置文件路径：`~/.open-agentic/user_config.json`
 
 ### 配置文件示例
 
@@ -105,7 +105,7 @@ openclaw-rust api-key validate openai sk-test
 
 ```bash
 # 使用自定义 OpenAI 兼容端点
-openclaw api-key set custom-provider your-api-key \
+openagentic api-key set custom-provider your-api-key \
   --url https://your-custom-endpoint.com/v1 \
   --model your-default-model
 ```
@@ -142,7 +142,7 @@ openclaw api-key set custom-provider your-api-key \
 
 ```bash
 # 设置配置文件权限（仅当前用户可读写）
-chmod 600 ~/.openclaw-rust/user_config.json
+chmod 600 ~/.open-agentic/user_config.json
 ```
 
 ### 2. 环境变量（推荐）
@@ -160,7 +160,7 @@ QWEN_API_KEY=xxxxx
 然后在应用中优先读取环境变量：
 
 ```rust
-use openclaw_core::UserConfigManager;
+use openagentic_core::UserConfigManager;
 
 let manager = UserConfigManager::new(None)?;
 
@@ -174,8 +174,8 @@ if let Ok(key) = std::env::var("OPENAI_API_KEY") {
 
 ```bash
 # 验证 API Key 格式
-openclaw-rust api-key validate openai sk-test
-openclaw-rust api-key validate anthropic sk-ant-test
+open-agentic api-key validate openai sk-test
+open-agentic api-key validate anthropic sk-ant-test
 ```
 
 ### 2. 环境变量（推荐）
@@ -193,7 +193,7 @@ QWEN_API_KEY=xxxxx
 然后在应用中优先读取环境变量：
 
 ```rust
-use openclaw_core::UserConfigManager;
+use openagentic_core::UserConfigManager;
 
 let manager = UserConfigManager::new(None)?;
 
@@ -207,8 +207,8 @@ if let Ok(key) = std::env::var("OPENAI_API_KEY") {
 
 ```bash
 # 验证 API Key 格式
-openclaw api-key validate openai sk-test
-openclaw api-key validate anthropic sk-ant-test
+openagentic api-key validate openai sk-test
+openagentic api-key validate anthropic sk-ant-test
 ```
 
 ---
@@ -233,8 +233,8 @@ openclaw api-key validate anthropic sk-ant-test
 ### 在代码中使用
 
 ```rust
-use openclaw_core::UserConfigManager;
-use openclaw_ai::providers::OpenAIProvider;
+use openagentic_core::UserConfigManager;
+use openagentic_ai::providers::OpenAIProvider;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -264,31 +264,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```bash
 # 初始化配置
-openclaw-rust init
+open-agentic init
 ```
 
 ### 问题：API Key 格式错误
 
 ```bash
 # 验证格式
-openclaw-rust api-key validate openai your-key
+open-agentic api-key validate openai your-key
 
 # 查看已配置的 key（部分隐藏）
-openclaw-rust api-key get openai
+open-agentic api-key get openai
 ```
 
 ### 问题：权限错误
 
 ```bash
 # 修复文件权限
-chmod 600 ~/.openclaw-rust/user_config.json
-chown $USER:$USER ~/.openclaw-rust/user_config.json
+chmod 600 ~/.open-agentic/user_config.json
+chown $USER:$USER ~/.open-agentic/user_config.json
 ```
 
 ---
 
 ## 📝 更多资源
 
-- [完整文档](https://github.com/openclaw/openclaw-rust)
-- [问题反馈](https://github.com/openclaw/openclaw-rust/issues)
-- [贡献指南](https://github.com/openclaw/openclaw-rust/blob/main/CONTRIBUTING.md)
+- [完整文档](https://github.com/openagentic/open-agentic)
+- [问题反馈](https://github.com/openagentic/open-agentic/issues)
+- [贡献指南](https://github.com/openagentic/open-agentic/blob/main/CONTRIBUTING.md)

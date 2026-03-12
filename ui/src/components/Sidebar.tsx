@@ -36,7 +36,7 @@ export function Sidebar() {
       <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <Bot className="w-6 h-6 text-primary-600" />
-          <span className="font-bold text-lg">OpenClaw</span>
+          <span className="font-bold text-lg">OpenAgentic</span>
         </div>
         <button 
           onClick={() => setSidebarOpen(false)}

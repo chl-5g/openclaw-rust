@@ -15,13 +15,13 @@ export interface Skill {
 export function SkillsPage() {
   const [activeTab, setActiveTab] = useState<'bundled' | 'managed' | 'workspace' | 'clawhub'>('bundled')
   const [skills, setSkills] = useState<Skill[]>([
-    { id: 'builtin.file_ops', name: '文件操作', description: '读取、写入、复制、移动文件和目录', version: '1.0.0', author: 'OpenClaw', category: 'Productivity', tags: ['文件', 'IO'], enabled: true, source: 'bundled' },
-    { id: 'builtin.web_search', name: '网页搜索', description: '使用搜索引擎查找信息', version: '1.0.0', author: 'OpenClaw', category: 'Analysis', tags: ['搜索', '网络'], enabled: true, source: 'bundled' },
-    { id: 'builtin.image_gen', name: '图像生成', description: '使用 AI 生成图像', version: '1.0.0', author: 'OpenClaw', category: 'Media', tags: ['图像', 'AI', '生成'], enabled: true, source: 'bundled' },
-    { id: 'builtin.code_analyze', name: '代码分析', description: '分析代码结构、检测问题、优化建议', version: '1.0.0', author: 'OpenClaw', category: 'Development', tags: ['代码', '分析', '开发'], enabled: true, source: 'bundled' },
-    { id: 'builtin.data_process', name: '数据处理', description: '处理和分析结构化数据', version: '1.0.0', author: 'OpenClaw', category: 'Analysis', tags: ['数据', '处理'], enabled: true, source: 'bundled' },
-    { id: 'builtin.automation', name: '自动化任务', description: '创建和执行自动化工作流', version: '1.0.0', author: 'OpenClaw', category: 'Automation', tags: ['自动化', '工作流'], enabled: true, source: 'bundled' },
-    { id: 'builtin.safe_execute', name: '安全执行', description: '在沙箱环境中安全执行代码', version: '1.0.0', author: 'OpenClaw', category: 'Security', tags: ['安全', '沙箱'], enabled: true, source: 'bundled' },
+    { id: 'builtin.file_ops', name: '文件操作', description: '读取、写入、复制、移动文件和目录', version: '1.0.0', author: 'OpenAgentic', category: 'Productivity', tags: ['文件', 'IO'], enabled: true, source: 'bundled' },
+    { id: 'builtin.web_search', name: '网页搜索', description: '使用搜索引擎查找信息', version: '1.0.0', author: 'OpenAgentic', category: 'Analysis', tags: ['搜索', '网络'], enabled: true, source: 'bundled' },
+    { id: 'builtin.image_gen', name: '图像生成', description: '使用 AI 生成图像', version: '1.0.0', author: 'OpenAgentic', category: 'Media', tags: ['图像', 'AI', '生成'], enabled: true, source: 'bundled' },
+    { id: 'builtin.code_analyze', name: '代码分析', description: '分析代码结构、检测问题、优化建议', version: '1.0.0', author: 'OpenAgentic', category: 'Development', tags: ['代码', '分析', '开发'], enabled: true, source: 'bundled' },
+    { id: 'builtin.data_process', name: '数据处理', description: '处理和分析结构化数据', version: '1.0.0', author: 'OpenAgentic', category: 'Analysis', tags: ['数据', '处理'], enabled: true, source: 'bundled' },
+    { id: 'builtin.automation', name: '自动化任务', description: '创建和执行自动化工作流', version: '1.0.0', author: 'OpenAgentic', category: 'Automation', tags: ['自动化', '工作流'], enabled: true, source: 'bundled' },
+    { id: 'builtin.safe_execute', name: '安全执行', description: '在沙箱环境中安全执行代码', version: '1.0.0', author: 'OpenAgentic', category: 'Security', tags: ['安全', '沙箱'], enabled: true, source: 'bundled' },
   ])
 
   const [clawhubSkills] = useState<Skill[]>([

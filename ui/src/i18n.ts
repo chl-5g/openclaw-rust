@@ -5,7 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
   en: {
     translation: {
-      welcome: 'Welcome to OpenClaw',
+      welcome: 'Welcome to OpenAgentic',
       'error.not_found': 'Resource not found',
       'error.timeout': 'Request timeout',
       'error.invalid_input': 'Invalid input',
@@ -28,7 +28,7 @@ const resources = {
   },
   zh: {
     translation: {
-      welcome: '欢迎使用 OpenClaw',
+      welcome: '欢迎使用 OpenAgentic',
       'error.not_found': '资源未找到',
       'error.timeout': '请求超时',
       'error.invalid_input': '输入无效',

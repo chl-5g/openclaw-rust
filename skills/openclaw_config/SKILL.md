@@ -1,12 +1,12 @@
 ---
-name: openclaw_config
-description: OpenClaw 统一配置文件 - 定义 agents、channels、bindings、tools 等配置
+name: openagentic_config
+description: OpenAgentic 统一配置文件 - 定义 agents、channels、bindings、tools 等配置
 skill_type: config
 version: 1.0.0
 author: user
 ---
 
-# OpenClaw 系统配置 Skill
+# OpenAgentic 系统配置 Skill
 
 ## 功能描述
 
@@ -15,7 +15,7 @@ author: user
 ## 目录结构
 
 ```
-openclaw_config/
+openagentic_config/
 ├── SKILL.md              # 本文件
 ├── references/           # 参考文档
 │   └── agent_roles.md    # Agent 角色说明

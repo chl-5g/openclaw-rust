@@ -110,7 +110,7 @@ export const useAppStore = create<AppState>()(
       setGatewayUrl: (url) => set({ gatewayUrl: url }),
     }),
     {
-      name: 'openclaw-storage',
+      name: 'openagentic-storage',
       partialize: (state) => ({
         darkMode: state.darkMode,
         gatewayUrl: state.gatewayUrl,

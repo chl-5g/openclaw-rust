@@ -1,32 +1,32 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/openclaw-core",
-    "crates/openclaw-ai",
-    "crates/openclaw-memory",
-    "crates/openclaw-vector",
-    "crates/openclaw-channels",
-    "crates/openclaw-agent",
-    "crates/openclaw-voice",
-    "crates/openclaw-server",
-    "crates/openclaw-cli",
-    "crates/openclaw-canvas",
-    "crates/openclaw-browser",
-    "crates/openclaw-sandbox",
-    "crates/openclaw-tools",
-    "crates/openclaw-device",
-    "crates/openclaw-security",
-    "crates/openclaw-acp",
-    "crates/openclaw-ws",
+    "crates/openagentic-core",
+    "crates/openagentic-ai",
+    "crates/openagentic-memory",
+    "crates/openagentic-vector",
+    "crates/openagentic-channels",
+    "crates/openagentic-agent",
+    "crates/openagentic-voice",
+    "crates/openagentic-server",
+    "crates/openagentic-cli",
+    "crates/openagentic-canvas",
+    "crates/openagentic-browser",
+    "crates/openagentic-sandbox",
+    "crates/openagentic-tools",
+    "crates/openagentic-device",
+    "crates/openagentic-security",
+    "crates/openagentic-acp",
+    "crates/openagentic-ws",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.93"
-authors = ["OpenClaw Rust Team"]
+authors = ["OpenAgentic Team"]
 license = "MIT"
-repository = "https://github.com/openclaw/openclaw-rust"
+repository = "https://github.com/openagentic/open-agentic"
 
 [workspace.dependencies]
 # Async runtime - base features (individual crates can extend)
@@ -132,22 +132,22 @@ wasmtime = "25.0"
 dirs = "6.0"
 
 # Internal crates
-openclaw-core = { path = "crates/openclaw-core" }
-openclaw-ai = { path = "crates/openclaw-ai" }
-openclaw-memory = { path = "crates/openclaw-memory" }
-openclaw-vector = { path = "crates/openclaw-vector" }
-openclaw-channels = { path = "crates/openclaw-channels" }
-openclaw-agent = { path = "crates/openclaw-agent" }
-openclaw-voice = { path = "crates/openclaw-voice" }
-openclaw-server = { path = "crates/openclaw-server" }
-openclaw-canvas = { path = "crates/openclaw-canvas" }
-openclaw-browser = { path = "crates/openclaw-browser" }
-openclaw-sandbox = { path = "crates/openclaw-sandbox", default-features = false, features = ["wasm-runtime-wasmtime"] }
-openclaw-tools = { path = "crates/openclaw-tools" }
-openclaw-device = { path = "crates/openclaw-device" }
-openclaw-security = { path = "crates/openclaw-security" }
-openclaw-acp = { path = "crates/openclaw-acp" }
-openclaw-ws = { path = "crates/openclaw-ws" }
+openagentic-core = { path = "crates/openagentic-core" }
+openagentic-ai = { path = "crates/openagentic-ai" }
+openagentic-memory = { path = "crates/openagentic-memory" }
+openagentic-vector = { path = "crates/openagentic-vector" }
+openagentic-channels = { path = "crates/openagentic-channels" }
+openagentic-agent = { path = "crates/openagentic-agent" }
+openagentic-voice = { path = "crates/openagentic-voice" }
+openagentic-server = { path = "crates/openagentic-server" }
+openagentic-canvas = { path = "crates/openagentic-canvas" }
+openagentic-browser = { path = "crates/openagentic-browser" }
+openagentic-sandbox = { path = "crates/openagentic-sandbox", default-features = false, features = ["wasm-runtime-wasmtime"] }
+openagentic-tools = { path = "crates/openagentic-tools" }
+openagentic-device = { path = "crates/openagentic-device" }
+openagentic-security = { path = "crates/openagentic-security" }
+openagentic-acp = { path = "crates/openagentic-acp" }
+openagentic-ws = { path = "crates/openagentic-ws" }
 
 [profile.release]
 opt-level = 3

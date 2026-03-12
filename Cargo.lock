@@ -5996,7 +5996,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
-name = "openclaw-acp"
+name = "openagentic-acp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6004,8 +6004,8 @@ dependencies = [
  "chrono",
  "futures",
  "futures-util",
- "openclaw-core",
- "openclaw-ws",
+ "openagentic-core",
+ "openagentic-ws",
  "regex",
  "reqwest",
  "serde",
@@ -6018,7 +6018,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-agent"
+name = "openagentic-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6026,19 +6026,19 @@ dependencies = [
  "chrono",
  "dirs 6.0.0",
  "futures",
- "openclaw-acp",
- "openclaw-ai",
- "openclaw-browser",
- "openclaw-canvas",
- "openclaw-channels",
- "openclaw-core",
- "openclaw-device",
- "openclaw-memory",
- "openclaw-sandbox",
- "openclaw-security",
- "openclaw-tools",
- "openclaw-vector",
- "openclaw-voice",
+ "openagentic-acp",
+ "openagentic-ai",
+ "openagentic-browser",
+ "openagentic-canvas",
+ "openagentic-channels",
+ "openagentic-core",
+ "openagentic-device",
+ "openagentic-memory",
+ "openagentic-sandbox",
+ "openagentic-security",
+ "openagentic-tools",
+ "openagentic-vector",
+ "openagentic-voice",
  "regex",
  "reqwest",
  "rusqlite",
@@ -6053,7 +6053,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-ai"
+name = "openagentic-ai"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6062,9 +6062,9 @@ dependencies = [
  "async-trait",
  "chrono",
  "futures",
- "openclaw-core",
- "openclaw-sandbox",
- "openclaw-tools",
+ "openagentic-core",
+ "openagentic-sandbox",
+ "openagentic-tools",
  "reqwest",
  "serde",
  "serde_json",
@@ -6077,7 +6077,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-browser"
+name = "openagentic-browser"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6087,7 +6087,7 @@ dependencies = [
  "chromiumoxide_cdp",
  "chrono",
  "futures",
- "openclaw-core",
+ "openagentic-core",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -6097,7 +6097,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-canvas"
+name = "openagentic-canvas"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6105,8 +6105,8 @@ dependencies = [
  "chrono",
  "futures",
  "futures-util",
- "openclaw-core",
- "openclaw-ws",
+ "openagentic-core",
+ "openagentic-ws",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -6117,7 +6117,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-channels"
+name = "openagentic-channels"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6128,7 +6128,7 @@ dependencies = [
  "futures",
  "hex",
  "hmac",
- "openclaw-core",
+ "openagentic-core",
  "rand 0.8.5",
  "regex",
  "reqwest",
@@ -6147,7 +6147,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-cli"
+name = "openagentic-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6157,17 +6157,17 @@ dependencies = [
  "dialoguer",
  "dirs 6.0.0",
  "lazy_static",
- "openclaw-agent",
- "openclaw-ai",
- "openclaw-channels",
- "openclaw-core",
- "openclaw-device",
- "openclaw-memory",
- "openclaw-sandbox",
- "openclaw-server",
- "openclaw-tools",
- "openclaw-vector",
- "openclaw-voice",
+ "openagentic-agent",
+ "openagentic-ai",
+ "openagentic-channels",
+ "openagentic-core",
+ "openagentic-device",
+ "openagentic-memory",
+ "openagentic-sandbox",
+ "openagentic-server",
+ "openagentic-tools",
+ "openagentic-vector",
+ "openagentic-voice",
  "reqwest",
  "serde",
  "serde_json",
@@ -6178,7 +6178,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-core"
+name = "openagentic-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6197,7 +6197,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-device"
+name = "openagentic-device"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6211,8 +6211,8 @@ dependencies = [
  "futures-util",
  "gethostname",
  "mqtt",
- "openclaw-core",
- "openclaw-tools",
+ "openagentic-core",
+ "openagentic-tools",
  "reqwest",
  "rumqttc",
  "serde",
@@ -6225,16 +6225,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-memory"
+name = "openagentic-memory"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
  "lancedb",
- "openclaw-ai",
- "openclaw-core",
- "openclaw-vector",
+ "openagentic-ai",
+ "openagentic-core",
+ "openagentic-vector",
  "qdrant-client",
  "regex",
  "reqwest",
@@ -6252,7 +6252,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-sandbox"
+name = "openagentic-sandbox"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
@@ -6262,8 +6262,8 @@ dependencies = [
  "bollard",
  "chrono",
  "futures",
- "openclaw-core",
- "openclaw-security",
+ "openagentic-core",
+ "openagentic-security",
  "rand 0.8.5",
  "regex",
  "rusqlite",
@@ -6280,13 +6280,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-security"
+name = "openagentic-security"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
  "once_cell",
- "openclaw-core",
+ "openagentic-core",
  "regex",
  "serde",
  "serde_json",
@@ -6297,7 +6297,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-server"
+name = "openagentic-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6310,21 +6310,21 @@ dependencies = [
  "futures",
  "lru",
  "once_cell",
- "openclaw-acp",
- "openclaw-agent",
- "openclaw-ai",
- "openclaw-browser",
- "openclaw-canvas",
- "openclaw-channels",
- "openclaw-core",
- "openclaw-device",
- "openclaw-memory",
- "openclaw-sandbox",
- "openclaw-security",
- "openclaw-tools",
- "openclaw-vector",
- "openclaw-voice",
- "openclaw-ws",
+ "openagentic-acp",
+ "openagentic-agent",
+ "openagentic-ai",
+ "openagentic-browser",
+ "openagentic-canvas",
+ "openagentic-channels",
+ "openagentic-core",
+ "openagentic-device",
+ "openagentic-memory",
+ "openagentic-sandbox",
+ "openagentic-security",
+ "openagentic-tools",
+ "openagentic-vector",
+ "openagentic-voice",
+ "openagentic-ws",
  "rand 0.8.5",
  "regex",
  "reqwest",
@@ -6343,7 +6343,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-tools"
+name = "openagentic-tools"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6352,9 +6352,9 @@ dependencies = [
  "cron",
  "futures",
  "hex",
- "openclaw-browser",
- "openclaw-core",
- "openclaw-sandbox",
+ "openagentic-browser",
+ "openagentic-core",
+ "openagentic-sandbox",
  "reqwest",
  "serde",
  "serde_json",
@@ -6369,7 +6369,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-vector"
+name = "openagentic-vector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6377,7 +6377,7 @@ dependencies = [
  "chrono",
  "lancedb",
  "milvus",
- "openclaw-core",
+ "openagentic-core",
  "qdrant-client",
  "rusqlite",
  "serde",
@@ -6390,7 +6390,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-voice"
+name = "openagentic-voice"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -6398,7 +6398,7 @@ dependencies = [
  "chrono",
  "cpal",
  "hound",
- "openclaw-core",
+ "openagentic-core",
  "reqwest",
  "rubato",
  "serde",
@@ -6412,7 +6412,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "openclaw-ws"
+name = "openagentic-ws"
 version = "0.1.0"
 dependencies = [
  "async-trait",

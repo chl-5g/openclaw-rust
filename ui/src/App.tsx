@@ -38,7 +38,7 @@ function AppLayout() {
             >
               <Layout className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-semibold">OpenClaw</h1>
+            <h1 className="text-lg font-semibold">OpenAgentic</h1>
           </div>
           
           <div className="flex items-center gap-2">

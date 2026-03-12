@@ -60,7 +60,7 @@ export function ChatView() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <Bot className="w-12 h-12 mb-4" />
-            <p>开始与 OpenClaw 对话</p>
+            <p>开始与 OpenAgentic 对话</p>
           </div>
         ) : (
           messages.map((msg) => (

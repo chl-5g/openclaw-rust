@@ -22,9 +22,9 @@
 
 3. 点击"完成"，获取 Webhook 地址
 
-#### 步骤3：配置 OpenClaw Rust
+#### 步骤3：配置 OpenAgentic
 
-编辑 `~/.openclaw-rust/openclaw.json`:
+编辑 `~/.open-agentic/openagentic.json`:
 
 ```json
 {
@@ -115,9 +115,9 @@ curl -X POST https://oapi.dingtalk.com/robot/send?access_token=xxx \
 https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx-xxx-xxx-xxx
 ```
 
-#### 步骤3：配置 OpenClaw Rust
+#### 步骤3：配置 OpenAgentic
 
-编辑 `~/.openclaw-rust/openclaw.json`:
+编辑 `~/.open-agentic/openagentic.json`:
 
 ```json
 {
