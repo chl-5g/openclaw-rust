@@ -39,7 +39,7 @@ Ollama（本地 LLM）/ 云端 LLM（OpenAI、Anthropic、DeepSeek 等）
 open-agentic/
 ├── crates/
 │   ├── openagentic-core        # 核心类型、配置、错误
-│   ├── openagentic-ai          # AI Provider 抽象（OpenAI/Anthropic/DeepSeek/Ollama...）
+│   ├── openagentic-ai          # AI Provider 抽象（LiteLLM 统一网关，支持 100+ 厂商）
 │   ├── openagentic-agent       # 多智能体系统 + 技能进化引擎
 │   ├── openagentic-server      # HTTP/WebSocket Gateway + JWT 认证
 │   ├── openagentic-memory      # 三层记忆系统
@@ -65,7 +65,7 @@ open-agentic/
 | **后端** | Rust 1.93+, axum 0.8, tokio |
 | **前端** | React 19, Vite, TailwindCSS, Zustand |
 | **移动端** | Kotlin, Jetpack Compose, AccessibilityService |
-| **AI** | 11+ Provider（OpenAI / Anthropic / Gemini / DeepSeek / Qwen / Ollama 等） |
+| **AI** | LiteLLM 统一网关（OpenAI / Anthropic / Gemini / DeepSeek / Qwen / Ollama 等 100+） |
 | **向量存储** | Qdrant, LanceDB, Milvus |
 | **序列化** | serde + serde_json |
 | **浏览器** | chromiumoxide (CDP) |
@@ -193,9 +193,10 @@ curl http://localhost:18789/models \
 ## 开发路线
 
 - [x] 后端 Rust Gateway 编译运行
+- [x] JWT 认证中间件
+- [x] LiteLLM 统一 Provider（替代 12 个独立 Provider 文件）
 - [ ] 对接 Ollama 测试对话
 - [ ] Web UI 对接后端
-- [x] JWT 认证中间件
 - [ ] 安全加固（Argon2、HTTPS、CORS 白名单、速率限制）
 - [ ] Android App 开发（Kotlin + 无障碍 API）
 - [ ] 域名注册、产品上线

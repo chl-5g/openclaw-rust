@@ -1,39 +1,15 @@
 //! AI 提供商实现
 //!
-//! 支持多种 AI 提供商:
+//! 通过 LiteLLM 统一网关支持 100+ AI 提供商:
 //! - 国外: OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Ollama
 //! - 国内: Qwen, Doubao, GLM, Minimax, Kimi
-//! - 自定义: CustomProvider (用户自定义)
+//! - 自定义: 任意 OpenAI 兼容 API
 
-mod anthropic;
-mod base;
-mod custom;
-mod deepseek;
-mod doubao;
 mod factory;
-mod gemini;
-mod glm;
-mod kimi;
-mod minimax;
-mod ollama;
-mod openai;
-mod openai_compatible;
-mod qwen;
+mod litellm;
 
-pub use anthropic::*;
-pub use base::*;
-pub use custom::*;
-pub use deepseek::*;
-pub use doubao::*;
 pub use factory::*;
-pub use gemini::*;
-pub use glm::*;
-pub use kimi::*;
-pub use minimax::*;
-pub use ollama::*;
-pub use openai::*;
-pub use openai_compatible::*;
-pub use qwen::*;
+pub use litellm::*;
 
 use async_trait::async_trait;
 use futures::Stream;

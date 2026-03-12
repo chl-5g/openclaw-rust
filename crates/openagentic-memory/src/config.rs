@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use openagentic_ai::{
     AIProvider,
-    providers::{CustomProvider, ProviderFactory},
+    providers::ProviderFactory,
 };
 use openagentic_core::Result;
 use openagentic_vector::{StoreBackend, VectorStore, create_store_async};
@@ -117,24 +117,6 @@ pub async fn create_embedding_provider_from_config(
     base_url: Option<String>,
 ) -> Result<Arc<dyn EmbeddingProvider>> {
     let provider: Arc<dyn AIProvider> = match provider_name {
-        "custom" => {
-            let base_url = base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string());
-            let api_key = api_key.unwrap_or_else(|| "dummy".to_string());
-            let custom = CustomProvider::new("custom", &base_url, &api_key);
-            if !model.is_empty() {
-                Arc::new(custom.with_default_model(model))
-            } else {
-                Arc::new(custom)
-            }
-        }
-        "gemini" => {
-            ProviderFactory::create_from_name("gemini", api_key, base_url).map_err(|e| {
-                openagentic_core::OpenAgenticError::Config(format!(
-                    "Failed to create Gemini provider: {}",
-                    e
-                ))
-            })?
-        }
         "anthropic" => {
             return Err(openagentic_core::OpenAgenticError::Config(
                 "Anthropic (Claude) does not provide embedding API. Please use another provider (OpenAI, Ollama, DeepSeek, GLM, Qwen, Minimax, Kimi, or custom).".to_string()

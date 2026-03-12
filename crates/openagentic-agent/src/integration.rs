@@ -9,11 +9,7 @@ use crate::{Agent, BaseAgent, TaskInput, TaskRequest, TaskType};
 use openagentic_ai::{
     AIProvider,
     models::get_all_models,
-    providers::{
-        AnthropicProvider, DeepSeekProvider, GeminiProvider, GlmProvider, KimiProvider,
-        MinimaxProvider, OpenAIProvider, ProviderConfig, ProviderFactory, ProviderType,
-        QwenProvider,
-    },
+    providers::{ProviderConfig, ProviderFactory, ProviderType},
 };
 
 // ============== 提供商创建函数 ==============
@@ -21,49 +17,54 @@ use openagentic_ai::{
 /// 创建 OpenAI 提供商
 pub fn create_openai_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("openai", api_key).with_default_model("gpt-4o");
-    Arc::new(OpenAIProvider::new(config))
+    ProviderFactory::create(ProviderType::OpenAI, config).expect("Failed to create OpenAI provider")
 }
 
 /// 创建 Anthropic 提供商
 pub fn create_anthropic_provider(api_key: &str) -> Arc<dyn AIProvider> {
-    let config = ProviderConfig::new("anthropic", api_key).with_default_model("claude-3-7-sonnet");
-    Arc::new(AnthropicProvider::new(config))
+    let config =
+        ProviderConfig::new("anthropic", api_key).with_default_model("claude-sonnet-4-20250514");
+    ProviderFactory::create(ProviderType::Anthropic, config)
+        .expect("Failed to create Anthropic provider")
 }
 
 /// 创建 Google Gemini 提供商
 pub fn create_gemini_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("google", api_key).with_default_model("gemini-2.0-flash");
-    Arc::new(GeminiProvider::new(config))
+    ProviderFactory::create(ProviderType::Gemini, config)
+        .expect("Failed to create Gemini provider")
 }
 
 /// 创建 DeepSeek 提供商
 pub fn create_deepseek_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("deepseek", api_key).with_default_model("deepseek-chat");
-    Arc::new(DeepSeekProvider::new(config))
+    ProviderFactory::create(ProviderType::DeepSeek, config)
+        .expect("Failed to create DeepSeek provider")
 }
 
 /// 创建 Qwen 通义千问提供商
 pub fn create_qwen_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("qwen", api_key).with_default_model("qwen-plus");
-    Arc::new(QwenProvider::new(config))
+    ProviderFactory::create(ProviderType::Qwen, config).expect("Failed to create Qwen provider")
 }
 
 /// 创建 GLM 智谱提供商
 pub fn create_glm_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("glm", api_key).with_default_model("glm-4-flash");
-    Arc::new(GlmProvider::new(config))
+    ProviderFactory::create(ProviderType::Glm, config).expect("Failed to create GLM provider")
 }
 
 /// 创建 Minimax 提供商
 pub fn create_minimax_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("minimax", api_key).with_default_model("abab6.5s-chat");
-    Arc::new(MinimaxProvider::new(config))
+    ProviderFactory::create(ProviderType::Minimax, config)
+        .expect("Failed to create Minimax provider")
 }
 
 /// 创建 Kimi 月之暗面提供商
 pub fn create_kimi_provider(api_key: &str) -> Arc<dyn AIProvider> {
     let config = ProviderConfig::new("kimi", api_key).with_default_model("moonshot-v1-128k");
-    Arc::new(KimiProvider::new(config))
+    ProviderFactory::create(ProviderType::Kimi, config).expect("Failed to create Kimi provider")
 }
 
 /// 创建 OpenRouter 提供商
@@ -76,7 +77,7 @@ pub fn create_openrouter_provider(api_key: &str) -> Result<Arc<dyn AIProvider>, 
 /// 创建 Ollama 本地模型提供商
 pub fn create_ollama_provider(base_url: Option<&str>) -> Result<Arc<dyn AIProvider>, String> {
     let url = base_url.unwrap_or("http://localhost:11434");
-    let config = ProviderConfig::new("ollama", "dummy")
+    let config = ProviderConfig::new("ollama", "")
         .with_base_url(url)
         .with_default_model("llama3.1");
     ProviderFactory::create(ProviderType::Ollama, config)
@@ -213,7 +214,6 @@ mod tests {
 
     #[test]
     fn test_create_all_providers() {
-        // 测试创建所有提供商
         let openai = create_openai_provider("test-key");
         assert_eq!(openai.name(), "openai");
 
@@ -268,7 +268,6 @@ mod tests {
         use crate::config::AgentInstanceConfig;
         use crate::sessions::Session;
         use openagentic_core::session::SessionScope;
-        use crate::types::PersonaId;
 
         let agent_config = AgentInstanceConfig {
             id: "doctor".to_string(),

@@ -29,4 +29,4 @@ pub use types::{
     StreamChunk, ToolDefinition, FinishReason, TokenUsage,
 };
 pub use tools::{ToolCall, ToolResult, ToolExecutor, ToolRegistry, FunctionDefinition};
-pub use providers::{AIProvider, ProviderConfig, ProviderFactory, ProviderType};
+pub use providers::{AIProvider, LiteLLMProvider, ProviderConfig, ProviderFactory, ProviderType};
