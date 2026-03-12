@@ -263,7 +263,7 @@ impl CameraManager {
             let device_path = format!("/dev/video{}", device);
 
             let output_path_clone = output_path.clone();
-            let path_str = path_to_str(&output_path_clone)?;
+            let path_str = path_to_str(&output_path_clone)?.to_string();
 
             let result = tokio::task::spawn_blocking(move || {
                 Command::new("ffmpeg")
@@ -282,7 +282,7 @@ impl CameraManager {
                         "libx264",
                         "-preset",
                         "ultrafast",
-                        path_str,
+                        &path_str,
                     ])
                     .output()
                     .map_err(|e| DeviceError::OperationFailed(e.to_string()))

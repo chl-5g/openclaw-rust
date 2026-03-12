@@ -166,7 +166,7 @@ impl SystemManager {
             let os_version = std::fs::read_to_string("/proc/version")
                 .map(|s| s.trim().to_string())
                 .unwrap_or_default();
-            let hostname = std::hostname::to_string();
+            let hostname = gethostname::gethostname().to_string_lossy().to_string();
             let uptime_seconds = self.get_linux_uptime().await?;
             let cpu_count = std::fs::read_to_string("/proc/cpuinfo")
                 .map(|s| s.lines().filter(|l| l.starts_with("processor")).count())
@@ -201,7 +201,7 @@ impl SystemManager {
             let os_name = "Windows".to_string();
             let os_version = self.run_command("cmd", vec!["/c".to_string(), "ver".to_string()]).await?
                 .stdout.unwrap_or_default().trim().to_string();
-            let hostname = std::hostname::to_string();
+            let hostname = gethostname::gethostname().to_string_lossy().to_string();
             let uptime_seconds = 0u64;
             let cpu_count = self.run_command("cmd", vec!["/c".to_string(), "echo %NUMBER_OF_PROCESSORS%".to_string()]).await?
                 .stdout.unwrap_or_default().trim().parse().unwrap_or(1);

@@ -6209,6 +6209,7 @@ dependencies = [
  "cocoa",
  "core-graphics",
  "futures-util",
+ "gethostname",
  "mqtt",
  "openclaw-core",
  "openclaw-tools",

@@ -98,7 +98,7 @@ impl DeviceCapabilities {
     }
 
     fn detect_sensors() -> Vec<SensorType> {
-        let sensors = Vec::new();
+        let mut sensors = Vec::new();
 
         #[cfg(target_os = "linux")]
         {
@@ -442,7 +442,7 @@ impl GpuCapability {
                     None
                 },
                 supports_vulkan: std::path::Path::new("/dev/dri/renderD128").exists(),
-                supports_cuda: std::path::Path::new("/usr/bin/nvidia-smi").is_ok(),
+                supports_cuda: std::path::Path::new("/usr/bin/nvidia-smi").exists(),
                 supports_opencl: std::path::Path::new("/etc/OpenCL").exists(),
             };
         }
@@ -559,7 +559,7 @@ impl FeatureFlags {
             return std::path::Path::new(
                 "/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e09832b8cd",
             )
-            .is_ok();
+            .exists();
         }
         false
     }

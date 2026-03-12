@@ -217,15 +217,18 @@ impl NotificationManager {
                 args.push(icon);
             }
 
+            let category_arg;
             if let Some(cat) = &rich.category {
                 args.push("-u");
                 args.push(match rich.urgency {
                     NotificationUrgency::Low => "low",
                     NotificationUrgency::Normal => "normal",
+                    NotificationUrgency::High => "high",
                     NotificationUrgency::Critical => "critical",
                 });
+                category_arg = format!("category={}", cat.as_str());
                 args.push("-A");
-                args.push(&format!("category={}", cat.as_str()));
+                args.push(&category_arg);
             }
 
             let output = Command::new("notify-send")

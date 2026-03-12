@@ -85,6 +85,9 @@ base64 = "0.22"
 # Clipboard
 arboard = "3.4"
 
+# Hostname
+gethostname = "1.1"
+
 # HTTP client
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "multipart"] }
 

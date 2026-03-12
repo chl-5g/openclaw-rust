@@ -22,13 +22,13 @@ impl LinuxSystemTts {
         Self { voice, rate }
     }
 
-    fn get_command(&self) -> (&str, Vec<&str>) {
+    fn get_command(&self) -> (&str, Vec<String>) {
         if Command::new("espeak").arg("--version").output().is_ok() {
-            ("espeak", vec!["-w", "/tmp/openclaw_tts.wav", "-s", &self.rate.to_string(), "-v", &self.voice])
+            ("espeak", vec!["-w".into(), "/tmp/openclaw_tts.wav".into(), "-s".into(), self.rate.to_string(), "-v".into(), self.voice.clone()])
         } else if Command::new("festival").arg("--version").output().is_ok() {
-            ("festival", vec!["--tts"])
+            ("festival", vec!["--tts".into()])
         } else {
-            ("espeak", vec!["-w", "/tmp/openclaw_tts.wav", "-s", "150"])
+            ("espeak", vec!["-w".into(), "/tmp/openclaw_tts.wav".into(), "-s".into(), "150".into()])
         }
     }
 }
@@ -40,7 +40,7 @@ impl crate::tts::TextToSpeech for LinuxSystemTts {
     }
 
     async fn synthesize(&self, text: &str, _options: Option<crate::types::SynthesisOptions>) -> Result<Vec<u8>> {
-        let (cmd, args) = self.get_command();
+        let (cmd, _args) = self.get_command();
 
         if cmd == "espeak" {
             let mut cmd = Command::new("espeak");
