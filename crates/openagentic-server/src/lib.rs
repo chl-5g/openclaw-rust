@@ -2,6 +2,7 @@
 
 pub mod adapters;
 pub mod acp_service;
+pub mod auth_middleware;
 pub mod agent_service;
 pub mod agentic_rag;
 pub mod agentic_rag_api;

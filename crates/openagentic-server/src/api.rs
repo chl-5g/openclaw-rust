@@ -16,6 +16,7 @@ use tokio::sync::RwLock;
 
 use crate::agentic_rag_api::create_agentic_rag_router;
 use crate::app_context::AppContext;
+use crate::auth_middleware::{login_handler, JwtConfig};
 use crate::browser_api::{BrowserApiState, create_browser_router};
 use crate::canvas_api::{CanvasApiState, create_canvas_router};
 use crate::device_api::create_device_router;
@@ -40,6 +41,7 @@ pub fn create_router(
     context: Arc<AppContext>,
     canvas_manager: Option<Arc<CanvasManager>>,
     browser_config: Option<BrowserConfig>,
+    jwt_config: Option<Arc<JwtConfig>>,
 ) -> Router {
     let state = Arc::new(RwLock::new(ApiState::new(context.clone())));
 
@@ -63,6 +65,18 @@ pub fn create_router(
         .with_state(state)
         .merge(create_device_router(context.unified_device_manager.clone()))
         .merge(create_agentic_rag_router());
+
+    // Add JWT authentication middleware and auth routes if configured
+    if let Some(jwt) = jwt_config {
+        router = router
+            .route("/api/auth/login", post(login_handler))
+            .route("/api/auth/token", post(login_handler))
+            .layer(axum::middleware::from_fn(
+                crate::auth_middleware::auth_middleware,
+            ))
+            .layer(axum::Extension(jwt.clone()));
+        tracing::info!("JWT authentication enabled for API routes");
+    }
 
     if let Some(canvas_mgr) = canvas_manager {
         let canvas_state = CanvasApiState::with_manager(canvas_mgr);

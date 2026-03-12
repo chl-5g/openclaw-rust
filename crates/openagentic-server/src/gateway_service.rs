@@ -7,6 +7,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use openagentic_core::Result;
+use crate::auth_middleware::JwtConfig;
 use crate::server_config::{ServerConfig, AcpConfig};
 
 use crate::adapters::{AIProviderAdapter, SecurityPipelineAdapter, ToolRegistryAdapter};
@@ -149,11 +150,19 @@ impl Gateway {
             .map(|v| serde_json::from_value::<openagentic_browser::BrowserConfig>(v.clone()).ok())
             .flatten();
 
+        // Build JWT config from security settings
+        let jwt_config = JwtConfig::from_security_config(
+            self.config.core.security.jwt_secret.as_deref(),
+            self.config.core.security.jwt_expiration_secs,
+        )
+        .map(Arc::new);
+
         let app = Router::new()
             .merge(create_router(
                 self.context.clone(),
                 canvas_manager,
                 browser_config,
+                jwt_config,
             ))
             .merge(websocket_router())
             .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any))

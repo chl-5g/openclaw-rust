@@ -431,6 +431,12 @@ pub struct SecurityConfig {
     pub enable_self_healer: bool,
     pub classifier_strict_mode: bool,
     pub stuck_timeout: Duration,
+    /// JWT secret key for API authentication. If set, JWT auth is enabled.
+    #[serde(default)]
+    pub jwt_secret: Option<String>,
+    /// JWT token expiration in seconds (default: 86400 = 24h)
+    #[serde(default)]
+    pub jwt_expiration_secs: Option<u64>,
 }
 
 impl Default for SecurityConfig {
@@ -443,6 +449,8 @@ impl Default for SecurityConfig {
             enable_self_healer: true,
             classifier_strict_mode: false,
             stuck_timeout: Duration::from_secs(30),
+            jwt_secret: None,
+            jwt_expiration_secs: None,
         }
     }
 }

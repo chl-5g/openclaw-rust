@@ -321,6 +321,8 @@ impl UnifiedConfig {
             enable_self_healer: self.security.enable_self_healer,
             classifier_strict_mode: false,
             stuck_timeout: std::time::Duration::from_secs(300),
+            jwt_secret: None,
+            jwt_expiration_secs: None,
         };
 
         crate::config::Config {
