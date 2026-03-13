@@ -263,6 +263,32 @@
     font-weight: 500;
   }
 
+  /* Model selector */
+  .model-select {
+    width: 100%;
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    background: var(--surface);
+    color: var(--on-surface);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2379747E' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .model-select:focus { border-color: var(--primary); }
+
+  .model-info {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    line-height: 1.4;
+  }
+
   .dialog label {
     display: block;
     font-size: 12px;
@@ -316,9 +342,156 @@
   }
 
   .error-banner.show { display: flex; }
+
+  /* Auth page */
+  .auth-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--surface);
+  }
+
+  .auth-page.hidden { display: none; }
+  .app-main.hidden { display: none; }
+
+  .auth-logo {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .auth-subtitle {
+    font-size: 14px;
+    color: var(--on-surface-variant);
+    margin-bottom: 32px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .auth-tabs {
+    display: flex;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--surface-variant);
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: none;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+  }
+
+  .auth-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+
+  .auth-form label {
+    display: block;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    margin-bottom: 4px;
+    margin-top: 14px;
+  }
+
+  .auth-form label:first-child { margin-top: 0; }
+
+  .auth-form input {
+    width: 100%;
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    background: var(--surface);
+    color: var(--on-surface);
+  }
+
+  .auth-form input:focus { border-color: var(--primary); }
+
+  .auth-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .auth-btn:hover { opacity: 0.9; }
+
+  .auth-error {
+    display: none;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--error-container);
+    color: #B3261E;
+    font-size: 13px;
+  }
+
+  .auth-error.show { display: block; }
 </style>
 </head>
 <body>
+
+<!-- ======== Auth Page ======== -->
+<div class="auth-page" id="authPage">
+  <div class="auth-logo">OpenAgentic</div>
+  <div class="auth-subtitle" data-i18n="auth_subtitle">Your personal AI assistant</div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')" data-i18n="login" id="loginTab">Log In</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')" data-i18n="register" id="registerTab">Sign Up</button>
+    </div>
+
+    <!-- Login form -->
+    <div class="auth-form active" id="loginForm">
+      <label data-i18n="email">Email</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com">
+      <label data-i18n="password">Password</label>
+      <input type="password" id="loginPassword" data-i18n-placeholder="password" placeholder="Password">
+      <button class="auth-btn" onclick="handleLogin()" data-i18n="login">Log In</button>
+    </div>
+
+    <!-- Register form -->
+    <div class="auth-form" id="registerForm">
+      <label data-i18n="email">Email</label>
+      <input type="email" id="regEmail" placeholder="you@example.com">
+      <label data-i18n="password">Password</label>
+      <input type="password" id="regPassword" data-i18n-placeholder="password" placeholder="Password">
+      <label data-i18n="confirm_password">Confirm Password</label>
+      <input type="password" id="regConfirmPassword" data-i18n-placeholder="confirm_password" placeholder="Confirm Password">
+      <button class="auth-btn" onclick="handleRegister()" data-i18n="register">Sign Up</button>
+    </div>
+
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- ======== Main App (hidden until login) ======== -->
+<div class="app-main hidden" id="appMain">
 
 <!-- Top bar -->
 <div class="topbar">
@@ -326,6 +499,7 @@
     <h1>OpenAgentic</h1>
     <div class="status-dot connected" id="statusDot"></div>
   </div>
+  <button class="settings-btn" onclick="handleLogout()" data-i18n-title="logout" title="Log Out" style="font-size:18px;margin-right:4px">&#9211;</button>
   <button class="settings-btn" onclick="toggleSettings()">&#9881;</button>
 </div>
 
@@ -356,16 +530,33 @@
   <div class="dialog">
     <h3 data-i18n="settings">Settings</h3>
 
-    <!-- Gateway Settings -->
-    <div class="section-title" data-i18n="gateway_settings">Gateway Settings</div>
+    <!-- Model Settings -->
+    <div class="section-title" data-i18n="model_settings">Model Settings</div>
     <hr class="section-divider">
-    <label data-i18n="gateway_url">Gateway URL</label>
-    <input type="text" id="gatewayUrl" placeholder="http://192.168.0.15:18789" value="http://192.168.0.15:18789">
-    <label data-i18n="username">Username</label>
-    <input type="text" id="username" placeholder="admin" value="admin">
-    <label data-i18n="password">Password</label>
-    <input type="password" id="password" data-i18n-placeholder="password" placeholder="Password">
-    <div style="margin-top:8px;font-size:13px;color:#4CAF50" id="connStatus" data-i18n="connected">Connected</div>
+    <label data-i18n="model">Model</label>
+    <select class="model-select" id="modelSelect" onchange="onModelChange()">
+      <optgroup label="OpenAI">
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4o-mini">GPT-4o Mini</option>
+      </optgroup>
+      <optgroup label="Anthropic">
+        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+      </optgroup>
+      <optgroup label="Google">
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+      </optgroup>
+      <optgroup label="DeepSeek">
+        <option value="deepseek-v3">DeepSeek V3</option>
+        <option value="deepseek-r1">DeepSeek R1</option>
+      </optgroup>
+      <optgroup label="Qwen">
+        <option value="qwen3-32b" selected>Qwen3 32B</option>
+        <option value="qwen3-14b">Qwen3 14B</option>
+      </optgroup>
+    </select>
+    <div class="model-info" id="modelInfo" data-i18n="model_info_qwen3">Qwen3 32B - 强大的中英双语模型，推理能力出色</div>
 
     <!-- Language Settings -->
     <div class="section-title" data-i18n="language_settings">Language Settings</div>
@@ -383,18 +574,16 @@
   </div>
 </div>
 
+</div><!-- end app-main -->
+
 <script>
   // ---- i18n ----
   const i18nStrings = {
     en: {
       settings: 'Settings',
-      gateway_settings: 'Gateway Settings',
+      model_settings: 'Model Settings',
+      model: 'Model',
       language_settings: 'Language Settings',
-      gateway_url: 'Gateway URL',
-      username: 'Username',
-      password: 'Password',
-      connected: 'Connected',
-      not_connected: 'Not connected',
       cancel: 'Cancel',
       save: 'Save',
       ask_me_anything: 'Ask me anything',
@@ -404,17 +593,33 @@
       send: 'Send',
       dismiss: 'Dismiss',
       thinking: 'Thinking...',
-      demo_response: 'This is a UI preview. In the real app, this response would come from your Gateway + LLM.',
+      demo_response: 'This is a UI preview. In the real app, this response would come from your AI model.',
+      auth_subtitle: 'Your personal AI assistant',
+      login: 'Log In',
+      register: 'Sign Up',
+      email: 'Email',
+      password: 'Password',
+      confirm_password: 'Confirm Password',
+      auth_error_empty: 'Please fill in all fields',
+      auth_error_mismatch: 'Passwords do not match',
+      auth_success_register: 'Account created! Please log in.',
+      logout: 'Log Out',
+      model_info_gpt4o: 'GPT-4o - Most capable OpenAI model, great at reasoning and coding',
+      model_info_gpt4o_mini: 'GPT-4o Mini - Fast and affordable, good for simple tasks',
+      model_info_claude_sonnet: 'Claude Sonnet 4.6 - Balanced performance, excels at analysis',
+      model_info_claude_haiku: 'Claude Haiku 4.5 - Ultra fast responses, great for quick tasks',
+      model_info_gemini_pro: 'Gemini 2.5 Pro - Google\'s best model, strong multimodal abilities',
+      model_info_gemini_flash: 'Gemini 2.5 Flash - Fast and efficient, good balance of speed and quality',
+      model_info_deepseek_v3: 'DeepSeek V3 - Powerful open model, excellent at Chinese tasks',
+      model_info_deepseek_r1: 'DeepSeek R1 - Reasoning model with chain-of-thought',
+      model_info_qwen3_32b: 'Qwen3 32B - Strong bilingual model, excellent reasoning',
+      model_info_qwen3_14b: 'Qwen3 14B - Efficient and fast, great for daily use',
     },
     zh: {
       settings: '设置',
-      gateway_settings: '网关设置',
+      model_settings: '模型设置',
+      model: '模型',
       language_settings: '语言设置',
-      gateway_url: '网关地址',
-      username: '用户名',
-      password: '密码',
-      connected: '已连接',
-      not_connected: '未连接',
       cancel: '取消',
       save: '保存',
       ask_me_anything: '有什么可以帮你的？',
@@ -424,8 +629,41 @@
       send: '发送',
       dismiss: '关闭',
       thinking: '思考中...',
-      demo_response: '这是 UI 预览。在正式应用中，回复将来自你的 Gateway + LLM。',
+      demo_response: '这是 UI 预览。在正式应用中，回复将来自你选择的 AI 模型。',
+      auth_subtitle: '你的私人 AI 助手',
+      login: '登录',
+      register: '注册',
+      email: '邮箱',
+      password: '密码',
+      confirm_password: '确认密码',
+      auth_error_empty: '请填写所有字段',
+      auth_error_mismatch: '两次密码不一致',
+      auth_success_register: '注册成功！请登录。',
+      logout: '退出登录',
+      model_info_gpt4o: 'GPT-4o - OpenAI 最强模型，擅长推理和编程',
+      model_info_gpt4o_mini: 'GPT-4o Mini - 快速实惠，适合简单任务',
+      model_info_claude_sonnet: 'Claude Sonnet 4.6 - 性能均衡，擅长分析',
+      model_info_claude_haiku: 'Claude Haiku 4.5 - 响应极快，适合轻量任务',
+      model_info_gemini_pro: 'Gemini 2.5 Pro - Google 最强模型，多模态能力突出',
+      model_info_gemini_flash: 'Gemini 2.5 Flash - 快速高效，速度与质量兼顾',
+      model_info_deepseek_v3: 'DeepSeek V3 - 强大的开源模型，中文能力出色',
+      model_info_deepseek_r1: 'DeepSeek R1 - 推理模型，支持思维链',
+      model_info_qwen3_32b: 'Qwen3 32B - 强大的中英双语模型，推理能力出色',
+      model_info_qwen3_14b: 'Qwen3 14B - 高效快速，适合日常使用',
     },
+  };
+
+  const modelInfoMap = {
+    'gpt-4o': 'model_info_gpt4o',
+    'gpt-4o-mini': 'model_info_gpt4o_mini',
+    'claude-sonnet-4-6': 'model_info_claude_sonnet',
+    'claude-haiku-4-5': 'model_info_claude_haiku',
+    'gemini-2.5-pro': 'model_info_gemini_pro',
+    'gemini-2.5-flash': 'model_info_gemini_flash',
+    'deepseek-v3': 'model_info_deepseek_v3',
+    'deepseek-r1': 'model_info_deepseek_r1',
+    'qwen3-32b': 'model_info_qwen3_32b',
+    'qwen3-14b': 'model_info_qwen3_14b',
   };
 
   let currentLang = localStorage.getItem('oa_lang') || 'zh';
@@ -525,12 +763,28 @@
     }, 1500);
   }
 
+  function onModelChange() {
+    const model = document.getElementById('modelSelect').value;
+    const infoKey = modelInfoMap[model] || '';
+    const infoEl = document.getElementById('modelInfo');
+    infoEl.setAttribute('data-i18n', infoKey);
+    infoEl.textContent = t(infoKey);
+  }
+
   function toggleSettings() {
     document.getElementById('settingsDialog').classList.toggle('show');
   }
 
   function saveSettings() {
+    const model = document.getElementById('modelSelect').value;
+    localStorage.setItem('oa_model', model);
     toggleSettings();
+  }
+
+  function initModel() {
+    const saved = localStorage.getItem('oa_model') || 'qwen3-32b';
+    document.getElementById('modelSelect').value = saved;
+    onModelChange();
   }
 
   function showError(msg) {
@@ -542,10 +796,68 @@
     document.getElementById('errorBanner').classList.remove('show');
   }
 
+  // ---- Auth ----
+  function switchAuthTab(tab) {
+    document.getElementById('loginTab').classList.toggle('active', tab === 'login');
+    document.getElementById('registerTab').classList.toggle('active', tab === 'register');
+    document.getElementById('loginForm').classList.toggle('active', tab === 'login');
+    document.getElementById('registerForm').classList.toggle('active', tab === 'register');
+    document.getElementById('authError').classList.remove('show');
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('authError');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    if (!email || !pass) { showAuthError(t('auth_error_empty')); return; }
+    // Demo: accept any input
+    localStorage.setItem('oa_user', email);
+    enterApp();
+  }
+
+  function handleRegister() {
+    const email = document.getElementById('regEmail').value.trim();
+    const pass = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirmPassword').value;
+    if (!email || !pass || !confirm) { showAuthError(t('auth_error_empty')); return; }
+    if (pass !== confirm) { showAuthError(t('auth_error_mismatch')); return; }
+    // Demo: show success, switch to login
+    document.getElementById('authError').classList.remove('show');
+    switchAuthTab('login');
+    document.getElementById('loginEmail').value = email;
+    showAuthError(t('auth_success_register'));
+    document.getElementById('authError').style.background = '#D4EDDA';
+    document.getElementById('authError').style.color = '#155724';
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('oa_user');
+    document.getElementById('authPage').classList.remove('hidden');
+    document.getElementById('appMain').classList.add('hidden');
+  }
+
+  function enterApp() {
+    document.getElementById('authPage').classList.add('hidden');
+    document.getElementById('appMain').classList.remove('hidden');
+    if (!document.querySelector('#chatArea .message')) {
+      loadDemo();
+    }
+  }
+
   // ---- Init ----
   initLangChips();
   applyI18n();
-  loadDemo();
+  initModel();
+
+  // Auto-login if session exists
+  if (localStorage.getItem('oa_user')) {
+    enterApp();
+  }
 </script>
 </body>
 </html>
