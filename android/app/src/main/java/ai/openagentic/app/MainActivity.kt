@@ -27,11 +27,6 @@ class MainActivity : ComponentActivity() {
                     val viewModel: ChatViewModel = viewModel()
                     val uiState by viewModel.uiState.collectAsState()
 
-                    // Initialize with context on first composition
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
-                        viewModel.init(this@MainActivity)
-                    }
-
                     ChatScreen(
                         uiState = uiState,
                         onSendMessage = { viewModel.sendMessage(it) },

@@ -1,8 +1,8 @@
 package ai.openagentic.app
 
-import android.content.Context
+import android.app.Application
 import android.content.SharedPreferences
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ai.openagentic.app.api.ApiClient
 import ai.openagentic.app.api.LoginRequest
@@ -29,23 +29,24 @@ data class ChatUiState(
     val token: String? = null,
 )
 
-class ChatViewModel : ViewModel() {
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var apiClient: ApiClient? = null
-    private var prefs: SharedPreferences? = null
+    private val prefs: SharedPreferences =
+        application.getSharedPreferences("openagentic", Application.MODE_PRIVATE)
 
-    fun init(context: Context) {
-        prefs = context.getSharedPreferences("openagentic", Context.MODE_PRIVATE)
-        val saved = prefs!!
+    private fun str(resId: Int): String = getApplication<Application>().getString(resId)
+    private fun str(resId: Int, vararg args: Any): String = getApplication<Application>().getString(resId, *args)
+
+    init {
         _uiState.value = _uiState.value.copy(
-            gatewayUrl = saved.getString("gateway_url", "http://192.168.0.15:18789") ?: "",
-            username = saved.getString("username", "admin") ?: "",
-            password = saved.getString("password", "") ?: "",
+            gatewayUrl = prefs.getString("gateway_url", "http://192.168.0.15:18789") ?: "",
+            username = prefs.getString("username", "admin") ?: "",
+            password = prefs.getString("password", "") ?: "",
         )
-        // Auto-connect if we have settings
         if (_uiState.value.gatewayUrl.isNotEmpty()) {
             connect()
         }
@@ -57,17 +58,17 @@ class ChatViewModel : ViewModel() {
             username = username,
             password = password,
         )
-        prefs?.edit()
-            ?.putString("gateway_url", gatewayUrl)
-            ?.putString("username", username)
-            ?.putString("password", password)
-            ?.apply()
+        prefs.edit()
+            .putString("gateway_url", gatewayUrl)
+            .putString("username", username)
+            .putString("password", password)
+            .apply()
     }
 
     fun connect() {
         val url = _uiState.value.gatewayUrl
         if (url.isBlank()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Please configure Gateway URL")
+            _uiState.value = _uiState.value.copy(errorMessage = str(R.string.error_configure_url))
             return
         }
 
@@ -76,10 +77,8 @@ class ChatViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Health check
                 apiClient!!.api.health()
 
-                // Login if credentials provided
                 val user = _uiState.value.username
                 val pass = _uiState.value.password
                 if (user.isNotBlank() && pass.isNotBlank()) {
@@ -101,7 +100,7 @@ class ChatViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     isConnected = false,
                     isLoading = false,
-                    errorMessage = "Connection failed: ${e.message}",
+                    errorMessage = str(R.string.error_connection_failed, e.message ?: ""),
                 )
             }
         }
@@ -113,7 +112,6 @@ class ChatViewModel : ViewModel() {
         val client = apiClient ?: return
         val token = _uiState.value.token
 
-        // Add user message
         val userMsg = ChatMessage(content = text, isUser = true)
         _uiState.value = _uiState.value.copy(
             messages = _uiState.value.messages + userMsg,
@@ -123,7 +121,6 @@ class ChatViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 if (token != null) {
-                    // Try streaming first
                     val aiMsg = ChatMessage(content = "", isUser = false, isStreaming = true)
                     _uiState.value = _uiState.value.copy(
                         messages = _uiState.value.messages + aiMsg,
@@ -131,22 +128,19 @@ class ChatViewModel : ViewModel() {
 
                     val sb = StringBuilder()
                     client.chatStream(_uiState.value.gatewayUrl, token, text)
-                        .catch { e ->
-                            // Fallback to non-streaming
+                        .catch {
                             val resp = client.chat(token, text)
-                            val content = resp.response ?: resp.error ?: "No response"
+                            val content = resp.response ?: resp.error ?: str(R.string.error_no_response)
                             updateLastAiMessage(content, streaming = false)
                         }
                         .collect { chunk ->
                             sb.append(chunk)
                             updateLastAiMessage(sb.toString(), streaming = true)
                         }
-                    // Mark streaming done
                     updateLastAiMessage(sb.toString(), streaming = false)
                 } else {
-                    // No token, try without auth
                     val resp = client.chat("", text)
-                    val content = resp.response ?: resp.error ?: "No response"
+                    val content = resp.response ?: resp.error ?: str(R.string.error_no_response)
                     val aiMsg = ChatMessage(content = content, isUser = false)
                     _uiState.value = _uiState.value.copy(
                         messages = _uiState.value.messages + aiMsg,
@@ -154,7 +148,7 @@ class ChatViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 val errMsg = ChatMessage(
-                    content = "Error: ${e.message}",
+                    content = str(R.string.error_prefix, e.message ?: ""),
                     isUser = false,
                 )
                 _uiState.value = _uiState.value.copy(

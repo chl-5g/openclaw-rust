@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenAgentic</string>
+
+    <!-- Chat screen -->
+    <string name="ask_me_anything">Ask me anything</string>
+    <string name="tap_gear_to_connect">Tap the gear icon to connect</string>
+    <string name="type_a_message">Type a message…</string>
+    <string name="thinking">Thinking…</string>
+    <string name="send">Send</string>
+    <string name="voice_input">Voice input</string>
+    <string name="dismiss">Dismiss</string>
+
+    <!-- Settings dialog -->
+    <string name="gateway_settings">Gateway Settings</string>
+    <string name="gateway_url">Gateway URL</string>
+    <string name="gateway_url_hint">http://192.168.0.15:18789</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="connect">Connect</string>
+    <string name="cancel">Cancel</string>
+    <string name="connected">Connected</string>
+    <string name="not_connected">Not connected</string>
+
+    <!-- Errors -->
+    <string name="error_connection_failed">Connection failed: %s</string>
+    <string name="error_configure_url">Please configure Gateway URL</string>
+    <string name="error_no_response">No response</string>
+    <string name="error_prefix">Error: %s</string>
+    <string name="error_sse_failed">Streaming failed</string>
+
+    <!-- Voice -->
+    <string name="voice_coming_soon">Voice input coming soon</string>
+</resources>

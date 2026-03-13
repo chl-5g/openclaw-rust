@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenAgentic</string>
+
+    <!-- Chat screen -->
+    <string name="ask_me_anything">有什么可以帮你的？</string>
+    <string name="tap_gear_to_connect">点击齿轮图标连接服务</string>
+    <string name="type_a_message">输入消息…</string>
+    <string name="thinking">思考中…</string>
+    <string name="send">发送</string>
+    <string name="voice_input">语音输入</string>
+    <string name="dismiss">关闭</string>
+
+    <!-- Settings dialog -->
+    <string name="gateway_settings">网关设置</string>
+    <string name="gateway_url">网关地址</string>
+    <string name="gateway_url_hint">http://192.168.0.15:18789</string>
+    <string name="username">用户名</string>
+    <string name="password">密码</string>
+    <string name="connect">连接</string>
+    <string name="cancel">取消</string>
+    <string name="connected">已连接</string>
+    <string name="not_connected">未连接</string>
+
+    <!-- Errors -->
+    <string name="error_connection_failed">连接失败：%s</string>
+    <string name="error_configure_url">请先配置网关地址</string>
+    <string name="error_no_response">无响应</string>
+    <string name="error_prefix">错误：%s</string>
+    <string name="error_sse_failed">流式连接失败</string>
+
+    <!-- Voice -->
+    <string name="voice_coming_soon">语音输入即将上线</string>
+</resources>

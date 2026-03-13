@@ -20,13 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ai.openagentic.app.ChatMessage
 import ai.openagentic.app.ChatUiState
-import kotlinx.coroutines.launch
+import ai.openagentic.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +41,6 @@ fun ChatScreen(
     var inputText by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(uiState.messages.size) {
@@ -54,9 +54,8 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("OpenAgentic", fontSize = 20.sp)
+                        Text(stringResource(R.string.app_name), fontSize = 20.sp)
                         Spacer(modifier = Modifier.width(8.dp))
-                        // Connection indicator
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
@@ -70,7 +69,7 @@ fun ChatScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.gateway_settings))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -101,7 +100,7 @@ fun ChatScreen(
                             fontSize = 13.sp,
                         )
                         TextButton(onClick = onDismissError) {
-                            Text("Dismiss")
+                            Text(stringResource(R.string.dismiss))
                         }
                     }
                 }
@@ -126,14 +125,14 @@ fun ChatScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "OpenAgentic",
+                                    text = stringResource(R.string.app_name),
                                     fontSize = 24.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = if (uiState.isConnected) "Ask me anything"
-                                    else "Tap the gear icon to connect",
+                                    text = if (uiState.isConnected) stringResource(R.string.ask_me_anything)
+                                    else stringResource(R.string.tap_gear_to_connect),
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -151,7 +150,7 @@ fun ChatScreen(
                     item {
                         Row(modifier = Modifier.padding(start = 4.dp)) {
                             Text(
-                                text = "Thinking...",
+                                text = stringResource(R.string.thinking),
                                 fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -174,7 +173,7 @@ fun ChatScreen(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Type a message...") },
+                        placeholder = { Text(stringResource(R.string.type_a_message)) },
                         maxLines = 4,
                         shape = RoundedCornerShape(24.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
@@ -190,14 +189,14 @@ fun ChatScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Mic button (placeholder for voice input)
+                    // Mic button
                     IconButton(
                         onClick = { /* TODO: voice input */ },
                         modifier = Modifier.size(48.dp),
                     ) {
                         Icon(
                             Icons.Default.Mic,
-                            contentDescription = "Voice input",
+                            contentDescription = stringResource(R.string.voice_input),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
@@ -215,7 +214,7 @@ fun ChatScreen(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
+                            contentDescription = stringResource(R.string.send),
                             tint = if (inputText.isNotBlank() && !uiState.isLoading)
                                 MaterialTheme.colorScheme.primary
                             else
@@ -293,49 +292,48 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Gateway Settings") },
+        title = { Text(stringResource(R.string.gateway_settings)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Gateway URL") },
-                    placeholder = { Text("http://192.168.0.15:18789") },
+                    label = { Text(stringResource(R.string.gateway_url)) },
+                    placeholder = { Text(stringResource(R.string.gateway_url_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
-                    label = { Text("Username") },
+                    label = { Text(stringResource(R.string.username)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.password)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (isConnected) {
-                    Text(
-                        text = "Connected",
-                        color = Color(0xFF4CAF50),
-                        fontSize = 13.sp,
-                    )
-                }
+                Text(
+                    text = if (isConnected) stringResource(R.string.connected)
+                    else stringResource(R.string.not_connected),
+                    color = if (isConnected) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
+                    fontSize = 13.sp,
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = { onSave(url, user, pass) }) {
-                Text("Connect")
+                Text(stringResource(R.string.connect))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
