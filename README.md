@@ -2,6 +2,8 @@
 
 **Open-source AI phone agent** — Let AI operate your Android phone
 
+[English](#architecture) | [中文](#中文说明)
+
 An AI Agent platform built on Android Accessibility Services. Users describe tasks in natural language; the AI understands the screen and controls the phone to complete operations. Supports 100+ LLM APIs, local-first data, open-source and auditable.
 
 ## Architecture
@@ -183,6 +185,76 @@ open-agentic/
 ## License
 
 MIT License — See [LICENSE](LICENSE).
+
+---
+
+## 中文说明
+
+**OpenAgentic** 是一个开源 AI 手机 Agent 平台，基于 Android 无障碍服务构建。用户用自然语言描述任务，AI 自动理解屏幕内容并控制手机完成操作。
+
+### 核心特性
+
+- **支持 100+ 大模型** — 通过 LiteLLM 统一网关接入 OpenAI、Anthropic、Gemini、DeepSeek、通义千问、Ollama 等
+- **多智能体系统** — 任务自动分解，多个专用 Agent 协作完成（研究员、程序员、写手等）
+- **三层记忆** — 工作记忆 → 短期记忆（压缩摘要）→ 长期记忆（向量存储）
+- **手机控制** — 通过无障碍服务读取屏幕、模拟点击/滑动/输入（开发中）
+- **语音交互** — STT 语音识别 + TTS 语音合成
+- **安全优先** — JWT + Argon2 认证、输入过滤、输出校验、审计日志、速率限制
+- **多平台消息** — 15+ 消息通道（Telegram、Discord、钉钉、企业微信、飞书等）
+- **工具生态** — 浏览器自动化、定时任务、Webhook、MCP 集成
+
+### 快速开始
+
+```bash
+# 克隆并构建
+git clone https://github.com/openagentic-ai/open-agentic.git
+cd open-agentic
+cargo build --release
+
+# 启动网关
+./target/release/open-agentic gateway
+
+# 健康检查
+curl http://localhost:18789/health
+```
+
+### 配置认证
+
+```bash
+# 生成密码哈希
+./target/release/open-agentic hash-password 你的密码
+
+# 编辑 ~/.openclaw-rust/config.json，填入 jwt_secret、admin_username、admin_password_hash
+# 详见上方 Configuration 章节
+
+# 登录获取 token
+curl -X POST http://localhost:18789/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "你的密码"}'
+```
+
+### 开发路线
+
+- [x] Rust 后端网关编译运行
+- [x] LiteLLM 统一 Provider（支持 100+ 大模型）
+- [x] JWT 认证 + Argon2 密码哈希
+- [x] 安全加固（CORS 白名单、速率限制、安全响应头）
+- [ ] 对接 Ollama 测试对话
+- [ ] Web UI 对接后端
+- [ ] Android App — 第一阶段：对话 MVP
+- [ ] Android App — 第二阶段：屏幕理解
+- [ ] Android App — 第三阶段：无障碍 Agent
+- [ ] 产品上线
+
+### 系统要求
+
+- **Rust**: 1.93+
+- **Docker**: 可选（沙箱功能）
+- **Chrome/Chromium**: 可选（浏览器自动化）
+
+### 许可证
+
+MIT License — 详见 [LICENSE](LICENSE)。
 
 ---
 
